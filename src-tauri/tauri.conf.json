@@ -14,8 +14,9 @@
     "windows": [
       {
         "title": "project-quicksave-gui",
-        "width": 800,
-        "height": 600
+        "width": 1000,
+        "height": 700,
+        "decorations": false
       }
     ],
     "security": {
