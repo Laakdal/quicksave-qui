@@ -1,8 +1,20 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+}
+
 @layer base {
-  body {
-    @apply bg-zinc-900 text-zinc-100 font-sans overflow-hidden;
+  html, body {
+    @apply bg-transparent text-zinc-100 font-sans overflow-hidden m-0 p-0;
+  }
+
+  /* 
+   * FIX: Tailwind's global `*::before` reset destroys Monaco Editor's icons.
+   * We must force the `.codicon` elements to retain their custom font.
+   */
+  .codicon, .codicon::before, .codicon::after {
+    font-family: "codicon" !important;
   }
 }
 
