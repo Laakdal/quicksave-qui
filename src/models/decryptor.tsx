@@ -343,8 +343,8 @@ export function DecryptorView() {
               <Check size={20} />
             </div>
             <div className="flex-1 min-w-0 pr-4">
-              <h3 className="text-sm font-bold text-white mb-0.5">File Saved Successfully</h3>
-              <p className="text-[10px] text-zinc-400 truncate opacity-80">
+              <h3 className="text-sm font-bold mb-0.5" style={{ color: 'var(--text-primary)' }}>File Saved Successfully</h3>
+              <p className="text-[10px] truncate opacity-60" style={{ color: 'var(--text-secondary)' }}>
                 {lastSavedPath}
               </p>
             </div>
@@ -359,11 +359,7 @@ export function DecryptorView() {
       )}
 
       <div className="w-full max-w-2xl py-6">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-bold text-white flex items-center gap-3">
-            {/* <UploadCloud size={20} className="text-[#24c8db]" />
-                Drop Zone */}
-          </h2>
+        <div className="flex items-center justify-end mb-3">
           <div className="relative">
             <button
               onMouseEnter={() => setIsHoveringInstant(true)}
@@ -371,8 +367,12 @@ export function DecryptorView() {
               onClick={toggleInstantMode}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all duration-300 border ${isInstantMode
                   ? 'bg-[#24c8db]/10 border-[#24c8db]/50 text-[#24c8db]'
-                  : 'bg-zinc-800 border-zinc-700 text-zinc-500 hover:text-zinc-300'
+                  : 'bg-black/5 border-black/10 hover:bg-black/10'
                 }`}
+              style={{ 
+                color: isInstantMode ? '#24c8db' : 'var(--text-secondary)',
+                borderColor: isInstantMode ? '#24c8db80' : 'var(--border-subtle)'
+              }}
             >
               <Zap size={12} className={isInstantMode ? 'fill-[#24c8db]' : ''} />
               Instant Mode: {isInstantMode ? 'ON' : 'OFF'}
@@ -392,15 +392,16 @@ export function DecryptorView() {
         <div
           className={`flex flex-col items-center justify-center w-full p-16 border-2 border-dashed rounded-3xl cursor-pointer transition-all duration-300 ${isDragging
             ? "border-[#24c8db] bg-[#24c8db]/10 scale-[1.01]"
-            : "border-zinc-700/50 hover:border-zinc-500 hover:bg-zinc-800/30"
+            : "border-black/5 hover:border-[#24c8db]/50 hover:bg-black/5"
             }`}
+          style={{ borderColor: isDragging ? '#24c8db' : 'var(--border-subtle)' }}
           onClick={handleBrowseClick}
         >
-          <UploadCloud size={56} className={`mb-6 transition-colors ${isDragging ? "text-[#24c8db]" : "text-zinc-600"}`} />
-          <h2 className="text-2xl font-bold text-zinc-100 mb-2">
+          <UploadCloud size={56} className={`mb-6 transition-colors ${isDragging ? "text-[#24c8db]" : "opacity-20"}`} style={{ color: 'var(--text-primary)' }} />
+          <h2 className="text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
             {isDragging ? "Release to decrypt" : "Select .sii file"}
           </h2>
-          <p className="text-zinc-500 text-center leading-relaxed">
+          <p className="text-center leading-relaxed opacity-60" style={{ color: 'var(--text-secondary)' }}>
             Drag & drop your ETS2 / ATS save file here<br />or click to browse
           </p>
         </div>
@@ -409,7 +410,7 @@ export function DecryptorView() {
       {history.length > 0 && (
         <div className="w-full max-w-2xl mt-2">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-bold text-white flex items-center gap-3">
+            <h3 className="text-lg font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
               <History size={20} className="text-[#24c8db]" />
               Recent Activity
             </h3>
@@ -427,20 +428,21 @@ export function DecryptorView() {
               <div
                 key={item.id}
                 onClick={() => handleFilePath(item.path)}
-                className="group flex items-center gap-4 p-4 bg-zinc-800/30 border border-zinc-700/30 rounded-xl hover:border-[#24c8db]/50 hover:bg-[#24c8db]/5 transition-all cursor-pointer active:scale-[0.98]"
+                className="group flex items-center gap-4 p-4 border rounded-xl transition-all cursor-pointer active:scale-[0.98] bg-black/5 hover:bg-[#24c8db]/5"
+                style={{ borderColor: 'var(--border-subtle)' }}
               >
-                <div className="w-10 h-10 rounded-xl bg-zinc-700/30 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-black/5">
                   <FileJson size={20} className="text-[#24c8db]/70" />
                 </div>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-zinc-200 truncate">{item.name}</span>
-                    <span className="text-[10px] text-zinc-500 font-medium px-1.5 py-0.5 bg-zinc-900/50 rounded flex items-center gap-1">
+                    <span className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{item.name}</span>
+                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded flex items-center gap-1 bg-black/5" style={{ color: 'var(--text-secondary)' }}>
                       <Clock size={10} /> {formatTime(item.timestamp)}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 mt-1 text-xs text-zinc-500 truncate">
+                  <div className="flex items-center gap-1.5 mt-1 text-xs truncate opacity-60" style={{ color: 'var(--text-secondary)' }}>
                     <Folder size={12} className="shrink-0 opacity-40" />
                     <span className="truncate">{item.path}</span>
                   </div>
