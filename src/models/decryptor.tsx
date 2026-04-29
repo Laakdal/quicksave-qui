@@ -1,20 +1,58 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { UploadCloud, FileJson, Download, ToggleLeft, ToggleRight } from "lucide-react";
+import { UploadCloud, FileJson, Download, ToggleLeft, ToggleRight, History, Trash2, Clock, X, Folder, Save, AlertTriangle, Check, Zap } from "lucide-react";
 import Editor from "@monaco-editor/react";
+
+/* ── Types ──────────────────────────────────────────────────────── */
+
+interface HistoryItem {
+  id: string;
+  name: string;
+  path: string;
+  timestamp: number;
+}
+
+/* ── DecryptorView ─────────────────────────────────────────────── */
 
 export function DecryptorView() {
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [decryptedText, setDecryptedText] = useState("");
   const [fileName, setFileName] = useState("");
+  const [currentFilePath, setCurrentFilePath] = useState("");
   const [useMonaco, setUseMonaco] = useState(true);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
 
-  // ── Tauri native file-drop listener ─────────────────────────────────────
-  // Tauri intercepts drag-and-drop at the OS level, so the browser's onDrop
-  // event never fires. We must use the Tauri window event API instead.
+  // Settings / Modes
+  const [isInstantMode, setIsInstantMode] = useState(() => localStorage.getItem("instant_decrypt_mode") === "true");
+  const [isHoveringInstant, setIsHoveringInstant] = useState(false);
+
+  // Use a ref for instant mode to avoid stale closures in the event listener
+  const instantModeRef = useRef(isInstantMode);
+  useEffect(() => {
+    instantModeRef.current = isInstantMode;
+  }, [isInstantMode]);
+
+  // Modal State
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [lastSavedPath, setLastSavedPath] = useState("");
+  const [dontShowAgain, setDontShowAgain] = useState(false);
+
+  // ── Load History ──
+  useEffect(() => {
+    const saved = localStorage.getItem("decrypt_history");
+    if (saved) {
+      try {
+        setHistory(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to parse history", e);
+      }
+    }
+  }, []);
+
+  // ── Tauri native file-drop listener ──
   useEffect(() => {
     const appWindow = getCurrentWindow();
 
@@ -32,11 +70,43 @@ export function DecryptorView() {
       }
     });
 
-    // Clean up listener when component unmounts
     return () => { unlisten.then(f => f()); };
   }, []);
 
-  // Reads a file from an absolute path string (Tauri drag-drop gives us paths)
+  const addToHistory = (name: string, path: string) => {
+    const existingIndex = history.findIndex(item => item.path === path);
+    let newHistory = [...history];
+
+    if (existingIndex !== -1) {
+      const item = { ...newHistory[existingIndex], timestamp: Date.now() };
+      newHistory.splice(existingIndex, 1);
+      newHistory = [item, ...newHistory];
+    } else {
+      const newItem: HistoryItem = {
+        id: Date.now().toString(),
+        name,
+        path,
+        timestamp: Date.now()
+      };
+      newHistory = [newItem, ...newHistory].slice(0, 10);
+    }
+
+    setHistory(newHistory);
+    localStorage.setItem("decrypt_history", JSON.stringify(newHistory));
+  };
+
+  const clearHistory = () => {
+    setHistory([]);
+    localStorage.removeItem("decrypt_history");
+  };
+
+  const removeHistoryItem = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const newHistory = history.filter(item => item.id !== id);
+    setHistory(newHistory);
+    localStorage.setItem("decrypt_history", JSON.stringify(newHistory));
+  };
+
   const handleFilePath = async (path: string) => {
     const name = path.split(/[\\/]/).pop() ?? path;
     if (!name.endsWith(".sii")) {
@@ -45,55 +115,101 @@ export function DecryptorView() {
     }
 
     setFileName(name);
+    setCurrentFilePath(path);
     setIsLoading(true);
     setDecryptedText("");
 
     try {
       const result = await invoke<string>("decode_sii_path", { path });
-      setDecryptedText(result);
+
+      if (instantModeRef.current) {
+        // Direct overwrite in instant mode using the ref value
+        await invoke("write_file", { path, contents: result });
+        setLastSavedPath(path);
+        setShowSuccessModal(true);
+        addToHistory(name, path);
+        setIsLoading(false);
+      } else {
+        setDecryptedText(result);
+        addToHistory(name, path);
+        setIsLoading(false);
+      }
     } catch {
-      // Fallback: if the Rust command doesn't accept a path yet,
-      // try reading the file via the browser File API (click-to-open)
       alert(`Could not read file at: ${path}`);
-    } finally {
       setIsLoading(false);
     }
   };
 
-  // Reads a File object (from the click-to-browse input)
-  const handleFile = async (file: File) => {
-    if (!file.name.endsWith(".sii")) {
-      alert("Please select a valid .sii file.");
-      return;
-    }
-
-    setFileName(file.name);
-    setIsLoading(true);
-    setDecryptedText("");
-
+  const executeSaveToOriginal = async () => {
+    if (!decryptedText || !currentFilePath) return;
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-      const data = Array.from(uint8Array);
-      const result = await invoke<string>("decode_sii", { data });
-      setDecryptedText(result);
-    } catch (error) {
-      console.error("Decryption failed:", error);
-      alert(`Failed to decrypt file: ${error}`);
-    } finally {
-      setIsLoading(false);
+      await invoke("write_file", { path: currentFilePath, contents: decryptedText });
+      setShowConfirmModal(false);
+      setLastSavedPath(currentFilePath);
+      setShowSuccessModal(true);
+      if (dontShowAgain) {
+        localStorage.setItem("show_save_confirmation", "false");
+      }
+    } catch (err) {
+      alert(`Failed to save file: ${err}`);
     }
   };
 
-  const downloadFile = () => {
+  const handleSaveToOriginalClick = () => {
+    const shouldShow = localStorage.getItem("show_save_confirmation") !== "false";
+    if (shouldShow) {
+      setShowConfirmModal(true);
+    } else {
+      executeSaveToOriginal();
+    }
+  };
+
+  const saveAs = async () => {
     if (!decryptedText) return;
-    const blob = new Blob([decryptedText], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName.replace(".sii", "_decrypted.sii");
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const path = await invoke<string | null>("save_file_dialog", {
+        defaultName: fileName.replace(".sii", "_decrypted.sii")
+      });
+      if (path) {
+        await invoke("write_file", { path, contents: decryptedText });
+        setLastSavedPath(path);
+        setShowSuccessModal(true);
+      }
+    } catch (err) {
+      console.error("Save error:", err);
+    }
+  };
+
+  const handleBrowseClick = async () => {
+    try {
+      const path = await invoke<string | null>("pick_file");
+      if (path) {
+        handleFilePath(path);
+      }
+    } catch (err) {
+      console.error("File dialog error:", err);
+    }
+  };
+
+  const formatTime = (ts: number) => {
+    const date = new Date(ts);
+    return date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Auto-hide success modal
+  useEffect(() => {
+    if (showSuccessModal) {
+      const timer = setTimeout(() => {
+        setShowSuccessModal(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccessModal]);
+
+  const toggleInstantMode = () => {
+    const next = !isInstantMode;
+    setIsInstantMode(next);
+    localStorage.setItem("instant_decrypt_mode", next ? "true" : "false");
   };
 
   // ── Render states ────────────────────────────────────────────────────────
@@ -106,17 +222,55 @@ export function DecryptorView() {
     );
   }
 
-  if (decryptedText) {
+  if (decryptedText && !isInstantMode) {
     return (
       <div className="flex flex-col w-full h-full p-5 gap-3">
-        {/* Toolbar */}
-        <div className="flex items-center justify-between bg-zinc-800/60 px-4 py-3 rounded-lg border border-zinc-700/50">
-          <div className="flex items-center gap-3 text-zinc-200">
-            <FileJson size={18} className="text-[#24c8db]" />
-            <span className="font-medium text-sm">{fileName}</span>
+        {/* Modal Overlay */}
+        {showConfirmModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 animate-in fade-in duration-200">
+            <div className="w-full max-w-sm bg-[#1c1c1f] border border-zinc-800 rounded-xl p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+              <div className="flex items-center gap-3 mb-4 text-[#ffb800]">
+                <AlertTriangle size={24} />
+                <h3 className="text-lg font-bold text-white">Confirm Overwrite</h3>
+              </div>
+              <p className="text-sm text-zinc-400 leading-relaxed mb-6">
+                This will decrypt and overwrite the original file at:<br />
+                <span className="text-zinc-200 font-mono text-[11px] block mt-2 p-2 bg-black/30 rounded border border-zinc-800/50 break-all">
+                  {currentFilePath}
+                </span>
+              </p>
+
+              <div className="flex items-center gap-2 mb-6 cursor-pointer select-none group" onClick={() => setDontShowAgain(!dontShowAgain)}>
+                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${dontShowAgain ? 'bg-[#24c8db] border-[#24c8db]' : 'border-zinc-700 group-hover:border-zinc-500'}`}>
+                  {dontShowAgain && <X size={12} className="text-black" />}
+                </div>
+                <span className="text-xs text-zinc-500 group-hover:text-zinc-300 transition-colors">Don't show this again</span>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowConfirmModal(false)}
+                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={executeSaveToOriginal}
+                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-bold bg-[#ef4444] text-white hover:bg-[#dc2626] transition-all shadow-lg shadow-red-500/10"
+                >
+                  Overwrite
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="flex gap-2 items-center">
-            {/* Editor Toggle */}
+        )}
+
+        <div className="flex items-center justify-between bg-zinc-800/60 px-4 py-3 rounded-lg border border-zinc-700/50">
+          <div className="flex items-center gap-3 text-zinc-200 min-w-0 flex-1 pr-4">
+            <FileJson size={18} className="text-[#24c8db] shrink-0" />
+            <span className="font-medium text-sm truncate">{fileName}</span>
+          </div>
+          <div className="flex gap-2 items-center shrink-0">
             <button
               onClick={() => setUseMonaco(!useMonaco)}
               className="flex items-center gap-2 px-3 py-1.5 mr-2 rounded-md text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 transition-colors"
@@ -124,7 +278,6 @@ export function DecryptorView() {
               {useMonaco ? <ToggleRight size={18} className="text-[#24c8db]" /> : <ToggleLeft size={18} />}
               VS Code Mode
             </button>
-
             <button
               onClick={() => { setDecryptedText(""); }}
               className="px-3 py-1.5 text-xs rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 transition-colors"
@@ -132,17 +285,22 @@ export function DecryptorView() {
               Close
             </button>
             <button
-              onClick={downloadFile}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#24c8db] text-black hover:bg-[#1ba0b0] rounded-md text-xs font-semibold transition-colors"
+              onClick={saveAs}
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-zinc-700 hover:bg-zinc-700 text-zinc-200 rounded-md text-xs font-semibold transition-colors"
             >
-              <Download size={14} /> Save Decrypted
+              <Download size={14} /> Save As...
+            </button>
+            <button
+              onClick={handleSaveToOriginalClick}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-[#24c8db] text-black hover:bg-[#1ba0b0] rounded-md text-xs font-bold transition-colors"
+            >
+              <Save size={14} /> Save Decrypted
             </button>
           </div>
         </div>
 
-        {/* Code View Area */}
         {useMonaco ? (
-          <div className="flex-1 rounded-lg border border-zinc-800 overflow-hidden relative shadow-inner">
+          <div className="flex-1 rounded-lg border border-zinc-800 overflow-hidden relative">
             <Editor
               height="100%"
               defaultLanguage="ini"
@@ -156,7 +314,6 @@ export function DecryptorView() {
                 fontSize: 13,
                 wordWrap: "off",
                 padding: { top: 16 },
-                // Disable the hover tooltip popups on editor widgets
                 hover: { enabled: false },
               }}
               loading={<div className="flex justify-center pt-10 text-zinc-500">Loading editor...</div>}
@@ -175,32 +332,137 @@ export function DecryptorView() {
     );
   }
 
-  // ── Drop zone (default view) ─────────────────────────────────────────────
   return (
-    <div className="flex items-center justify-center w-full h-full">
-      <div
-        className={`flex flex-col items-center justify-center w-full max-w-md p-10 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200 ${
-          isDragging
-            ? "border-[#24c8db] bg-[#24c8db]/10 scale-[1.02]"
-            : "border-zinc-700 hover:border-zinc-500 hover:bg-zinc-800/20"
-        }`}
-        onClick={() => fileInputRef.current?.click()}
-      >
-        <UploadCloud size={44} className={`mb-5 transition-colors ${isDragging ? "text-[#24c8db]" : "text-zinc-600"}`} />
-        <h2 className="text-lg font-semibold text-zinc-200 mb-1">
-          {isDragging ? "Release to decrypt" : "Select .sii file"}
-        </h2>
-        <p className="text-sm text-zinc-500 text-center leading-relaxed">
-          Drag & drop your ETS2 / ATS save file here<br />or click to browse
-        </p>
-        <input
-          type="file"
-          accept=".sii"
-          ref={fileInputRef}
-          onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])}
-          className="hidden"
-        />
+    <div className="flex flex-col items-center w-full h-full p-8 pt-16 overflow-auto custom-scrollbar">
+
+      {/* Success Notification (Bottom Right) */}
+      {showSuccessModal && (
+        <div className="fixed bottom-6 right-6 z-[110] animate-in slide-in-from-bottom-5 fade-in duration-300">
+          <div className="bg-[#1c1c1f] border border-[#24c8db]/30 rounded-xl p-4 shadow-2xl flex items-center gap-4 min-w-[300px] max-w-md">
+            <div className="w-10 h-10 rounded-full bg-[#24c8db]/10 flex items-center justify-center text-[#24c8db] shrink-0">
+              <Check size={20} />
+            </div>
+            <div className="flex-1 min-w-0 pr-4">
+              <h3 className="text-sm font-bold text-white mb-0.5">File Saved Successfully</h3>
+              <p className="text-[10px] text-zinc-400 truncate opacity-80">
+                {lastSavedPath}
+              </p>
+            </div>
+            <button
+              onClick={() => setShowSuccessModal(false)}
+              className="p-1 hover:bg-white/5 rounded-lg transition-colors text-zinc-500 hover:text-white"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="w-full max-w-2xl py-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-bold text-white flex items-center gap-3">
+            {/* <UploadCloud size={20} className="text-[#24c8db]" />
+                Drop Zone */}
+          </h2>
+          <div className="relative">
+            <button
+              onMouseEnter={() => setIsHoveringInstant(true)}
+              onMouseLeave={() => setIsHoveringInstant(false)}
+              onClick={toggleInstantMode}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all duration-300 border ${isInstantMode
+                  ? 'bg-[#24c8db]/10 border-[#24c8db]/50 text-[#24c8db]'
+                  : 'bg-zinc-800 border-zinc-700 text-zinc-500 hover:text-zinc-300'
+                }`}
+            >
+              <Zap size={12} className={isInstantMode ? 'fill-[#24c8db]' : ''} />
+              Instant Mode: {isInstantMode ? 'ON' : 'OFF'}
+            </button>
+
+            {isHoveringInstant && (
+              <div className="absolute right-0 top-full mt-2 w-48 z-50 p-3 bg-[#1c1c1f] border border-zinc-800 rounded-xl shadow-2xl animate-in fade-in zoom-in-95 duration-200 pointer-events-none">
+                <p className="text-[12px] leading-relaxed text-zinc-400">
+                  <span className="text-[#24c8db] font-bold block mb-1">Instant Mode</span>
+                  Instantly decrypts and overwrites original files upon dropping them into the zone.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div
+          className={`flex flex-col items-center justify-center w-full p-16 border-2 border-dashed rounded-3xl cursor-pointer transition-all duration-300 ${isDragging
+            ? "border-[#24c8db] bg-[#24c8db]/10 scale-[1.01]"
+            : "border-zinc-700/50 hover:border-zinc-500 hover:bg-zinc-800/30"
+            }`}
+          onClick={handleBrowseClick}
+        >
+          <UploadCloud size={56} className={`mb-6 transition-colors ${isDragging ? "text-[#24c8db]" : "text-zinc-600"}`} />
+          <h2 className="text-2xl font-bold text-zinc-100 mb-2">
+            {isDragging ? "Release to decrypt" : "Select .sii file"}
+          </h2>
+          <p className="text-zinc-500 text-center leading-relaxed">
+            Drag & drop your ETS2 / ATS save file here<br />or click to browse
+          </p>
+        </div>
       </div>
+
+      {history.length > 0 && (
+        <div className="w-full max-w-2xl mt-2">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-bold text-white flex items-center gap-3">
+              <History size={20} className="text-[#24c8db]" />
+              Recent Activity
+            </h3>
+            <button
+              onClick={clearHistory}
+              className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold text-zinc-500 hover:text-red-400 hover:bg-red-400/10 transition-all uppercase tracking-wider"
+            >
+              <Trash2 size={12} />
+              Clear All
+            </button>
+          </div>
+
+          <div className="space-y-2 pb-10">
+            {history.map((item) => (
+              <div
+                key={item.id}
+                onClick={() => handleFilePath(item.path)}
+                className="group flex items-center gap-4 p-4 bg-zinc-800/30 border border-zinc-700/30 rounded-xl hover:border-[#24c8db]/50 hover:bg-[#24c8db]/5 transition-all cursor-pointer active:scale-[0.98]"
+              >
+                <div className="w-10 h-10 rounded-xl bg-zinc-700/30 flex items-center justify-center shrink-0">
+                  <FileJson size={20} className="text-[#24c8db]/70" />
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-zinc-200 truncate">{item.name}</span>
+                    <span className="text-[10px] text-zinc-500 font-medium px-1.5 py-0.5 bg-zinc-900/50 rounded flex items-center gap-1">
+                      <Clock size={10} /> {formatTime(item.timestamp)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-1 text-xs text-zinc-500 truncate">
+                    <Folder size={12} className="shrink-0 opacity-40" />
+                    <span className="truncate">{item.path}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-center px-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeHistoryItem(e, item.id);
+                    }}
+                    className="p-2.5 rounded-full text-zinc-500 hover:text-white hover:bg-zinc-700/50 transition-all opacity-0 group-hover:opacity-100"
+                    title="Remove from history"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
