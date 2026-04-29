@@ -12,33 +12,30 @@ const topTabs = [
 ];
 
 const bottomTabs = [
-    // { id: "marketplace", label: "Marketplace", icon: Package },
     { id: "settings", label: "Settings", icon: Settings },
 ];
 
 export function Sidebar({ isOpen, activeTab, setActiveTab }: SidebarProps) {
-    // When closed → icon-only narrow rail (48 px), like image 2
-    // When open   → full sidebar with labels (240 px)
     return (
         <aside
-            className="flex flex-col shrink-0 bg-[#18181b] border-r border-zinc-800 overflow-hidden transition-[width] duration-300 ease-in-out"
-            style={{ width: isOpen ? 240 : 48 }}
+            className="flex flex-col shrink-0 bg-[#18181b] overflow-hidden transition-[width] duration-300 ease-in-out"
+            style={{ width: isOpen ? 200 : 48 }}
         >
             {/* ── Top section ── */}
             <div className="flex-1 py-3">
                 {/* Section header — only visible when expanded */}
                 {isOpen && (
-                    <p className="px-4 mb-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 select-none">
+                    <p className="px-4 mb-2 text-xs font-semibold text-zinc-400 select-none">
                         Tools
                     </p>
                 )}
-                <ul className="space-y-0.5 px-1.5">
+                <ul className="space-y-0.5 px-1.5 ">
                     {topTabs.map(tab => <NavItem key={tab.id} tab={tab} active={activeTab === tab.id} isOpen={isOpen} onClick={() => setActiveTab(tab.id)} />)}
                 </ul>
             </div>
 
             {/* ── Bottom section ── */}
-            <div className="py-3 border-t border-zinc-800/60">
+            <div className="py-3">
                 <ul className="space-y-0.5 px-1.5">
                     {bottomTabs.map(tab => <NavItem key={tab.id} tab={tab} active={activeTab === tab.id} isOpen={isOpen} onClick={() => setActiveTab(tab.id)} />)}
                 </ul>
@@ -73,7 +70,7 @@ function NavItem({ tab, active, isOpen, onClick }: NavItemProps) {
                 <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-white rounded-r-full" />
             )}
             <Icon size={17} strokeWidth={1.75} className={active ? "text-white" : "text-zinc-400"} />
-            {isOpen && <span className="text-[13px] font-medium whitespace-nowrap">{tab.label}</span>}
+            {isOpen && <span className="text-[14px] font-medium whitespace-nowrap">{tab.label}</span>}
         </li>
     );
 }
