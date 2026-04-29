@@ -16,11 +16,19 @@ fn decode_sii(data: Vec<u8>) -> Result<String, String> {
     String::from_utf8(decoded).map_err(|e| e.to_string())
 }
 
+/// Decrypt a file directly from an absolute path string (used for drag-and-drop).
+#[tauri::command]
+fn decode_sii_path(path: String) -> Result<String, String> {
+    let data = std::fs::read(&path).map_err(|e| format!("Failed to read file: {}", e))?;
+    let decoded = sii::process(&data).map_err(|e| e.to_string())?;
+    String::from_utf8(decoded).map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, decode_sii])
+        .invoke_handler(tauri::generate_handler![greet, decode_sii, decode_sii_path])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
