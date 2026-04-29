@@ -16,7 +16,8 @@
         "title": "project-quicksave-gui",
         "width": 1000,
         "height": 700,
-        "decorations": false
+        "decorations": false,
+        "transparent": true
       }
     ],
     "security": {
