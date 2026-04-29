@@ -6,46 +6,59 @@ interface TitlebarProps {
   setIsSidebarOpen: (isOpen: boolean | ((prev: boolean) => boolean)) => void;
 }
 
-const appWindow = getCurrentWindow();
+export function Titlebar({ setIsSidebarOpen }: TitlebarProps) {
+  const handleMinimize = async () => {
+    const win = getCurrentWindow();
+    await win.minimize().catch(e => console.error("minimize error:", e));
+  };
 
-async function minimize() { await appWindow.minimize(); }
-async function maximize() { await appWindow.toggleMaximize(); }
-async function closeWin() { await appWindow.close(); }
+  const handleMaximize = async () => {
+    const win = getCurrentWindow();
+    await win.toggleMaximize().catch(e => console.error("maximize error:", e));
+  };
 
-export function Titlebar({ isSidebarOpen, setIsSidebarOpen }: TitlebarProps) {
+  const handleClose = async () => {
+    const win = getCurrentWindow();
+    await win.close().catch(e => console.error("close error:", e));
+  };
+
   return (
-    <header className="relative flex items-center h-10 bg-[#18181b] shrink-0 z-50">
-      {/* Drag region: sits behind everything, fills the bar */}
-      <div data-tauri-drag-region className="absolute inset-0" />
-
-      {/* Left controls – rendered above the drag region */}
-      <div className="relative flex items-center gap-2 pl-3 pr-4 z-10 pointer-events-auto">
+    <header 
+      className="relative flex items-center h-10 shrink-0 z-50 transition-all duration-300 select-none"
+      style={{ backgroundColor: 'var(--bg-sidebar)' }}
+    >
+      {/* Left controls */}
+      <div className="flex items-center gap-2 pl-3 pr-4 h-full">
         <button
           onClick={() => setIsSidebarOpen((o: boolean) => !o)}
-          className="p-1 rounded hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+          className="p-1 rounded hover:bg-zinc-500/10 transition-colors pointer-events-auto"
+          style={{ color: 'var(--text-secondary)' }}
           title="Toggle sidebar"
         >
           <Menu size={16} strokeWidth={1.5} />
         </button>
 
         {/* App icon + name */}
-        <div className="flex items-center gap-2 ml-1 select-none pointer-events-none">
+        <div className="flex items-center gap-2 ml-1 pointer-events-none">
           <div className="flex items-center justify-center w-5 h-5 rounded bg-[#24c8db] text-black font-bold text-[11px]">
             Q
           </div>
-          <span className="text-[13px] font-medium text-zinc-200">Project Quicksave</span>
+          <span className="text-[14px] font-medium" style={{ color: 'var(--text-primary)' }}>Project Quicksave</span>
         </div>
       </div>
 
-      {/* Window controls – flush right, above drag region */}
-      <div className="relative ml-auto flex items-stretch h-full z-10 pointer-events-auto">
-        <button onClick={minimize} className="flex items-center justify-center w-11 h-full text-zinc-400 hover:bg-white/10 hover:text-white" title="Minimize">
+      {/* ── DRAG REGION ── (Middle filler) */}
+      <div data-tauri-drag-region className="flex-1 h-full cursor-default" />
+
+      {/* Window controls */}
+      <div className="flex items-stretch h-full">
+        <button onClick={handleMinimize} className="flex items-center justify-center w-11 h-full hover:bg-zinc-500/10 transition-colors pointer-events-auto" style={{ color: 'var(--text-secondary)' }} title="Minimize">
           <Minus size={16} strokeWidth={1.5} />
         </button>
-        <button onClick={maximize} className="flex items-center justify-center w-11 h-full text-zinc-400 hover:bg-white/10 hover:text-white" title="Maximize">
+        <button onClick={handleMaximize} className="flex items-center justify-center w-11 h-full hover:bg-zinc-500/10 transition-colors pointer-events-auto" style={{ color: 'var(--text-secondary)' }} title="Maximize">
           <Square size={12} strokeWidth={1.5} />
         </button>
-        <button onClick={closeWin} className="flex items-center justify-center w-11 h-full text-zinc-400 hover:bg-[#e81123] hover:text-white" title="Close">
+        <button onClick={handleClose} className="flex items-center justify-center w-11 h-full transition-colors hover:bg-[#e81123] hover:text-white pointer-events-auto" style={{ color: 'var(--text-secondary)' }} title="Close">
           <X size={16} strokeWidth={1.5} />
         </button>
       </div>

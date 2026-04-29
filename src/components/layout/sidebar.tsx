@@ -1,4 +1,5 @@
-import { Settings, FileText, Database, Package } from "lucide-react";
+import { Settings, FileText, Database } from "lucide-react";
+import { ProfileBar } from "./profile";
 
 interface SidebarProps {
     isOpen: boolean;
@@ -18,14 +19,29 @@ const bottomTabs = [
 export function Sidebar({ isOpen, activeTab, setActiveTab }: SidebarProps) {
     return (
         <aside
-            className="flex flex-col shrink-0 bg-[#18181b] overflow-hidden transition-[width] duration-300 ease-in-out"
-            style={{ width: isOpen ? 200 : 48 }}
+            className="flex flex-col shrink-0 overflow-visible transition-all duration-300 ease-in-out"
+            style={{ 
+              width: isOpen ? 200 : 48,
+              backgroundColor: 'var(--bg-sidebar)',
+              color: 'var(--text-primary)'
+            }}
         >
+            {/* ── Profile ── */}
+            <ProfileBar isOpen={isOpen} />
+
+            {/* Separator Line */}
+            <div className="px-3" style={{ marginTop: '12px', marginBottom: '12px' }}>
+                <div className="h-[1px] w-full" style={{ backgroundColor: 'var(--border-subtle)' }} />
+            </div>
+
             {/* ── Top section ── */}
-            <div className="flex-1 py-3">
+            <div className="flex-1 pb-3">
                 {/* Section header — only visible when expanded */}
                 {isOpen && (
-                    <p className="px-4 mb-2 text-xs font-semibold text-zinc-400 select-none">
+                    <p 
+                        className="px-4 mb-2 text-[14px] font-semibold select-none transition-colors duration-300"
+                        style={{ color: 'var(--text-sidebar-secondary)' }}
+                    >
                         Tools
                     </p>
                 )}
@@ -58,18 +74,21 @@ function NavItem({ tab, active, isOpen, onClick }: NavItemProps) {
         <li
             onClick={onClick}
             title={!isOpen ? tab.label : undefined}
-            className={`relative flex items-center gap-3 rounded-md cursor-pointer transition-colors select-none
+            className={`relative flex items-center gap-3 rounded-md cursor-pointer transition-all duration-300 select-none
         ${isOpen ? "px-3 py-2" : "px-0 py-2 justify-center"}
         ${active
-                    ? "bg-zinc-800 text-white"
-                    : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
-                }`}
+                        ? "bg-[#24c8db]/10 font-medium"
+                        : "hover:bg-zinc-500/10"
+                    }`}
+            style={{ 
+                color: active ? 'var(--accent)' : 'var(--text-sidebar-secondary)' 
+            }}
         >
             {/* Active left-border accent */}
             {active && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-white rounded-r-full" />
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-[#24c8db] rounded-r-full" />
             )}
-            <Icon size={17} strokeWidth={1.75} className={active ? "text-white" : "text-zinc-400"} />
+            <Icon size={17} strokeWidth={1.75} className="transition-colors duration-300" />
             {isOpen && <span className="text-[14px] font-medium whitespace-nowrap">{tab.label}</span>}
         </li>
     );
