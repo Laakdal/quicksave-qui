@@ -19,6 +19,7 @@ interface SettingsViewProps {
 export function SettingsView({ currentTheme, onThemeChange, initialTab, onTabViewed }: SettingsViewProps) {
   const [activeTab, setActiveTab] = useState(initialTab || "general");
   const [ets2Path, setEts2Path] = useState(() => localStorage.getItem("game_profiles_path") || "");
+  const [tempPath, setTempPath] = useState(ets2Path);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [disableMinSize, setDisableMinSize] = useState(() => localStorage.getItem("disable_min_window_size") === "true");
   const [showSaveConfirm, setShowSaveConfirm] = useState(() => localStorage.getItem("show_save_confirmation") !== "false");
@@ -28,6 +29,7 @@ export function SettingsView({ currentTheme, onThemeChange, initialTab, onTabVie
       invoke<string | null>("auto_detect_profiles").then(detected => {
         if (detected) {
           setEts2Path(detected);
+          setTempPath(detected);
           localStorage.setItem("game_profiles_path", detected);
         }
       });
@@ -53,16 +55,9 @@ export function SettingsView({ currentTheme, onThemeChange, initialTab, onTabVie
       const selected = await invoke<string | null>("pick_folder");
 
       if (selected) {
-        let finalPath = selected;
-
-        // Smart Detection: If they picked the parent folder, auto-append /profiles
-        const lower = selected.toLowerCase();
-        if (lower.endsWith("euro truck simulator 2") || lower.endsWith("american truck simulator")) {
-          finalPath = `${selected}/profiles`;
-        }
-
-        setEts2Path(finalPath);
-        localStorage.setItem("game_profiles_path", finalPath);
+        setEts2Path(selected);
+        setTempPath(selected);
+        localStorage.setItem("game_profiles_path", selected);
         setSaveSuccess(true);
       }
     } catch (err) {
@@ -71,8 +66,10 @@ export function SettingsView({ currentTheme, onThemeChange, initialTab, onTabVie
   };
 
   const handleManualSave = (val: string) => {
+    if (val === ets2Path) return;
     setEts2Path(val);
     localStorage.setItem("game_profiles_path", val);
+    setSaveSuccess(true);
   };
 
   return (
@@ -116,7 +113,7 @@ export function SettingsView({ currentTheme, onThemeChange, initialTab, onTabVie
       {/* ── Content Area ── */}
       <div className="flex-1 p-4 md:p-8 overflow-y-auto flex flex-col" style={{ backgroundColor: 'var(--bg-main)' }}>
         {activeTab === "general" && (
-          <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="w-full max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300">
 
             {/* ── Hero Banner ── */}
             <div className="relative mb-6 rounded-xl overflow-hidden bg-[#24c8db]/20 border border-[#24c8db]/20 flex items-center justify-between p-5 gap-4">
@@ -126,13 +123,14 @@ export function SettingsView({ currentTheme, onThemeChange, initialTab, onTabVie
                 backgroundSize: "20px 20px"
               }} />
               <div className="relative">
-                <p className="font-semibold text-[15px] text-white mb-1">Support the Project</p>
-                <p className="text-sm text-zinc-300 mb-3">If this tool saved you time, consider starring the repo or contributing!</p>
+                <p className="font-bold text-[15px] mb-1" style={{ color: currentTheme === 'light' ? '#0e5a63' : 'white' }}>Support the Project</p>
+                <p className="text-sm mb-3 opacity-80" style={{ color: currentTheme === 'light' ? '#167a86' : '#d4d4d8' }}>If this tool saved you time, consider starring the repo or contributing!</p>
                 <a
                   href="https://github.com/Laakdal/quicksave-qui/"
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-sm font-medium rounded-lg transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/10 hover:bg-white/20 border border-black/5 text-sm font-bold rounded-lg transition-colors"
+                  style={{ color: currentTheme === 'light' ? '#0e5a63' : 'white' }}
                 >
                   ★ Star on GitHub
                 </a>
@@ -147,7 +145,7 @@ export function SettingsView({ currentTheme, onThemeChange, initialTab, onTabVie
               </div>
             </div>
 
-            <h1 className="text-xl font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>General Settings</h1>
+            <h1 className="text-xl font-semibold mb-8" style={{ color: 'var(--text-primary)' }}>General Settings</h1>
 
             {/* Disable Minimum Window Size */}
             <div className="flex items-center justify-between py-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
@@ -175,11 +173,11 @@ export function SettingsView({ currentTheme, onThemeChange, initialTab, onTabVie
                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>Ask for confirmation before overwriting the original file.</p>
               </div>
               {/* Toggle Switch */}
-              <div 
+              <div
                 onClick={() => {
-                    const next = !showSaveConfirm;
-                    setShowSaveConfirm(next);
-                    localStorage.setItem("show_save_confirmation", next ? "true" : "false");
+                  const next = !showSaveConfirm;
+                  setShowSaveConfirm(next);
+                  localStorage.setItem("show_save_confirmation", next ? "true" : "false");
                 }}
                 className={`w-10 h-5 rounded-full flex items-center px-1 cursor-pointer transition-all duration-300 ${showSaveConfirm ? 'bg-[#24c8db]' : 'bg-zinc-700'}`}
               >
@@ -283,21 +281,24 @@ export function SettingsView({ currentTheme, onThemeChange, initialTab, onTabVie
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    value={ets2Path}
-                    onChange={(e) => {
-                      setEts2Path(e.target.value);
-                      localStorage.setItem("game_profiles_path", e.target.value);
-                      setSaveSuccess(true);
+                    value={tempPath}
+                    onChange={(e) => setTempPath(e.target.value)}
+                    onBlur={() => handleManualSave(tempPath)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleManualSave(tempPath);
+                        (e.target as HTMLInputElement).blur();
+                      }
                     }}
                     placeholder="C:\Users\...\Documents\Euro Truck Simulator 2"
-                    className="flex-1 px-3 py-2 rounded-lg text-xs bg-black/20 border outline-none transition-all focus:border-[#24c8db]"
-                    style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
+                    className={`flex-1 px-3 py-2 rounded-lg text-xs bg-black/20 border outline-none transition-all ${saveSuccess ? 'border-[#24c8db]' : 'focus:border-[#24c8db]'}`}
+                    style={{ borderColor: saveSuccess ? '#24c8db' : 'var(--border-subtle)', color: 'var(--text-primary)' }}
                   />
                   <button
                     onClick={handleBrowse}
                     className="px-4 py-2 rounded-lg text-xs font-semibold bg-[#24c8db] text-black hover:bg-[#20b5c7] transition-all flex items-center gap-2"
                   >
-                    <Folder size={14} />
+                    {saveSuccess ? <Check size={14} /> : <Folder size={14} />}
                     Browse
                   </button>
                 </div>
@@ -310,11 +311,11 @@ export function SettingsView({ currentTheme, onThemeChange, initialTab, onTabVie
                 )}
               </div>
 
-              {/* ATS Profiles Path (Placeholder for consistency) */}
-              <div className="p-5 rounded-xl border opacity-50 grayscale select-none" style={{ backgroundColor: 'var(--bg-sidebar)', borderColor: 'var(--border-subtle)' }}>
-                <div className="flex items-center gap-3 mb-4">
+              {/* ATS Profiles Path (Placeholder) */}
+              <div className="p-5 rounded-xl border opacity-60" style={{ backgroundColor: 'var(--bg-sidebar)', borderColor: 'var(--border-subtle)' }}>
+                <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-zinc-500/10 flex items-center justify-center">
-                    <HardDrive size={20} style={{ color: 'var(--text-secondary)' }} />
+                    <HardDrive size={20} className="opacity-40" style={{ color: 'var(--text-primary)' }} />
                   </div>
                   <div>
                     <p className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>ATS Profiles Directory (Coming Soon)</p>
