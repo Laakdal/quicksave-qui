@@ -35,7 +35,7 @@ export function Titlebar({ setIsSidebarOpen }: TitlebarProps) {
           style={{ color: 'var(--text-secondary)' }}
           title="Toggle sidebar"
         >
-          <Menu size={16} strokeWidth={1.5} />
+          <Menu size={20} strokeWidth={1.5} />
         </button>
 
         {/* App icon + name */}
