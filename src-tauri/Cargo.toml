@@ -32,4 +32,5 @@ flate2 = "1"
 
 # Efficient large-text handling for 180K+ line save files
 ropey = "1"
+tauri-plugin-dialog = "2"
 
