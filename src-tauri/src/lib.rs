@@ -40,6 +40,7 @@ pub fn run() {
             decode_sii_path,
             write_file,
             commands::profile::get_game_profiles,
+            commands::profile::get_game_saves,
             commands::profile::auto_detect_profiles,
             commands::dialog::pick_folder,
             commands::dialog::pick_file,
