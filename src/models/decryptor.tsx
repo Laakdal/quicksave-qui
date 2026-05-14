@@ -216,7 +216,7 @@ export function DecryptorView() {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center w-full h-full gap-4 text-zinc-400">
-        <div className="w-10 h-10 border-4 border-zinc-700 border-t-[#24c8db] rounded-full animate-spin" />
+        <div className="w-10 h-10 border-4 border-zinc-700 border-t-accent rounded-full animate-spin" />
         <p className="font-medium text-sm">Decrypting save file…</p>
       </div>
     );
@@ -228,7 +228,7 @@ export function DecryptorView() {
         {/* Modal Overlay */}
         {showConfirmModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 animate-in fade-in duration-200">
-            <div className="w-full max-w-sm bg-[#1c1c1f] border border-zinc-800 rounded-xl p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="w-full max-w-sm bg-panel-dark border border-zinc-800 rounded-xl p-6 shadow-2xl animate-in zoom-in-95 duration-200">
               <div className="flex items-center gap-3 mb-4 text-[#ffb800]">
                 <AlertTriangle size={24} />
                 <h3 className="text-lg font-bold text-white">Confirm Overwrite</h3>
@@ -241,7 +241,7 @@ export function DecryptorView() {
               </p>
 
               <div className="flex items-center gap-2 mb-6 cursor-pointer select-none group" onClick={() => setDontShowAgain(!dontShowAgain)}>
-                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${dontShowAgain ? 'bg-[#24c8db] border-[#24c8db]' : 'border-zinc-700 group-hover:border-zinc-500'}`}>
+                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${dontShowAgain ? 'bg-accent border-accent' : 'border-zinc-700 group-hover:border-zinc-500'}`}>
                   {dontShowAgain && <X size={12} className="text-black" />}
                 </div>
                 <span className="text-xs text-zinc-500 group-hover:text-zinc-300 transition-colors">Don't show this again</span>
@@ -267,7 +267,7 @@ export function DecryptorView() {
 
         <div className="flex items-center justify-between bg-zinc-800/60 px-4 py-3 rounded-lg border border-zinc-700/50">
           <div className="flex items-center gap-3 text-zinc-200 min-w-0 flex-1 pr-4">
-            <FileJson size={18} className="text-[#24c8db] shrink-0" />
+            <FileJson size={18} className="text-accent shrink-0" />
             <span className="font-medium text-sm truncate">{fileName}</span>
           </div>
           <div className="flex gap-2 items-center shrink-0">
@@ -275,7 +275,7 @@ export function DecryptorView() {
               onClick={() => setUseMonaco(!useMonaco)}
               className="flex items-center gap-2 px-3 py-1.5 mr-2 rounded-md text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 transition-colors"
             >
-              {useMonaco ? <ToggleRight size={18} className="text-[#24c8db]" /> : <ToggleLeft size={18} />}
+              {useMonaco ? <ToggleRight size={18} className="text-accent" /> : <ToggleLeft size={18} />}
               VS Code Mode
             </button>
             <button
@@ -292,7 +292,7 @@ export function DecryptorView() {
             </button>
             <button
               onClick={handleSaveToOriginalClick}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-[#24c8db] text-black hover:bg-[#1ba0b0] rounded-md text-xs font-bold transition-colors"
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-accent text-black hover:bg-accent-hover rounded-md text-xs font-bold transition-colors"
             >
               <Save size={14} /> Save Decrypted
             </button>
@@ -320,7 +320,7 @@ export function DecryptorView() {
             />
           </div>
         ) : (
-          <div className="flex-1 bg-[#121214] rounded-lg border border-zinc-800 overflow-hidden relative">
+          <div className="flex-1 bg-panel-darker rounded-lg border border-zinc-800 overflow-hidden relative">
             <div className="absolute inset-0 overflow-auto">
               <pre className="p-5 text-[13px] leading-relaxed text-zinc-300 font-mono">
                 <code>{decryptedText}</code>
@@ -338,8 +338,8 @@ export function DecryptorView() {
       {/* Success Notification (Bottom Right) */}
       {showSuccessModal && (
         <div className="fixed bottom-6 right-6 z-[110] animate-in slide-in-from-bottom-5 fade-in duration-300">
-          <div className="bg-[#1c1c1f] border border-[#24c8db]/30 rounded-xl p-4 shadow-2xl flex items-center gap-4 min-w-[300px] max-w-md">
-            <div className="w-10 h-10 rounded-full bg-[#24c8db]/10 flex items-center justify-center text-[#24c8db] shrink-0">
+          <div className="bg-panel-dark border border-accent/30 rounded-xl p-4 shadow-2xl flex items-center gap-4 min-w-[300px] max-w-md">
+            <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-accent shrink-0">
               <Check size={20} />
             </div>
             <div className="flex-1 min-w-0 pr-4">
@@ -366,22 +366,22 @@ export function DecryptorView() {
               onMouseLeave={() => setIsHoveringInstant(false)}
               onClick={toggleInstantMode}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all duration-300 border ${isInstantMode
-                  ? 'bg-[#24c8db]/10 border-[#24c8db]/50 text-[#24c8db]'
+                  ? 'bg-accent/10 border-accent/50 text-accent'
                   : 'bg-black/5 border-black/10 hover:bg-black/10'
                 }`}
               style={{ 
-                color: isInstantMode ? '#24c8db' : 'var(--text-secondary)',
-                borderColor: isInstantMode ? '#24c8db80' : 'var(--border-subtle)'
+                color: isInstantMode ? 'var(--accent)' : 'var(--text-secondary)',
+                borderColor: isInstantMode ? 'rgba(var(--accent) / 0.5)' : 'var(--border-subtle)'
               }}
             >
-              <Zap size={12} className={isInstantMode ? 'fill-[#24c8db]' : ''} />
+              <Zap size={12} className={isInstantMode ? 'fill-accent' : ''} />
               Instant Mode: {isInstantMode ? 'ON' : 'OFF'}
             </button>
 
             {isHoveringInstant && (
-              <div className="absolute right-0 top-full mt-2 w-48 z-50 p-3 bg-[#1c1c1f] border border-zinc-800 rounded-xl shadow-2xl animate-in fade-in zoom-in-95 duration-200 pointer-events-none">
+              <div className="absolute right-0 top-full mt-2 w-48 z-50 p-3 bg-panel-dark border border-zinc-800 rounded-xl shadow-2xl animate-in fade-in zoom-in-95 duration-200 pointer-events-none">
                 <p className="text-[12px] leading-relaxed text-zinc-400">
-                  <span className="text-[#24c8db] font-bold block mb-1">Instant Mode</span>
+                  <span className="text-accent font-bold block mb-1">Instant Mode</span>
                   Instantly decrypts and overwrites original files upon dropping them into the zone.
                 </p>
               </div>
@@ -391,13 +391,13 @@ export function DecryptorView() {
 
         <div
           className={`flex flex-col items-center justify-center w-full p-16 border-2 border-dashed rounded-3xl cursor-pointer transition-all duration-300 ${isDragging
-            ? "border-[#24c8db] bg-[#24c8db]/10 scale-[1.01]"
-            : "border-black/5 hover:border-[#24c8db]/50 hover:bg-black/5"
+            ? "border-accent bg-accent/10 scale-[1.01]"
+            : "border-black/5 hover:border-accent/50 hover:bg-black/5"
             }`}
-          style={{ borderColor: isDragging ? '#24c8db' : 'var(--border-subtle)' }}
+          style={{ borderColor: isDragging ? 'var(--accent)' : 'var(--border-subtle)' }}
           onClick={handleBrowseClick}
         >
-          <UploadCloud size={56} className={`mb-6 transition-colors ${isDragging ? "text-[#24c8db]" : "opacity-20"}`} style={{ color: 'var(--text-primary)' }} />
+          <UploadCloud size={56} className={`mb-6 transition-colors ${isDragging ? "text-accent" : "opacity-20"}`} style={{ color: 'var(--text-primary)' }} />
           <h2 className="text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
             {isDragging ? "Release to decrypt" : "Select .sii file"}
           </h2>
@@ -411,7 +411,7 @@ export function DecryptorView() {
         <div className="w-full max-w-2xl mt-2">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-lg font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
-              <History size={20} className="text-[#24c8db]" />
+              <History size={20} className="text-accent" />
               Recent Activity
             </h3>
             <button
@@ -428,11 +428,11 @@ export function DecryptorView() {
               <div
                 key={item.id}
                 onClick={() => handleFilePath(item.path)}
-                className="group flex items-center gap-4 p-4 border rounded-xl transition-all cursor-pointer active:scale-[0.98] bg-black/5 hover:bg-[#24c8db]/5"
+                className="group flex items-center gap-4 p-4 border rounded-xl transition-all cursor-pointer active:scale-[0.98] bg-black/5 hover:bg-accent/5"
                 style={{ borderColor: 'var(--border-subtle)' }}
               >
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-black/5">
-                  <FileJson size={20} className="text-[#24c8db]/70" />
+                  <FileJson size={20} className="text-accent/70" />
                 </div>
 
                 <div className="flex-1 min-w-0">
