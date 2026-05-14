@@ -2,20 +2,46 @@
 
 @theme {
   --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --color-accent: rgb(var(--accent));
+  --color-accent-hover: rgb(var(--accent-hover));
+
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 30px;
 }
 
 @layer base {
   :root {
-    /* Dark Theme (Default) */
+
     --bg-app: #1e1e1e;
-    --bg-sidebar: #18181b;
-    --bg-main: #202022;
+    --bg-sidebar: #1e1e1e;
+    --bg-main: #1e1e1e;
     --text-primary: #f4f4f5;
     --text-secondary: #a1a1aa;
     --text-sidebar-primary: #f4f4f5;
     --text-sidebar-secondary: #a1a1aa;
-    --border-subtle: rgba(63, 63, 70, 0.4);
-    --accent: #24c8db;
+    --border-subtle: rgba(255, 255, 255, 0.05);
+    
+    --accent: 239 83 80;
+    --accent-hover: 229 57 53;
+    --panel-dark: 38 38 38;
+    --panel-darker: 30 30 30;
+    
+    --zinc-100: 244 244 245;
+    --zinc-200: 228 228 231;
+    --zinc-300: 212 212 216;
+    --zinc-400: 161 161 170;
+    --zinc-500: 113 113 122;
+    --zinc-600: 82 82 91;
+    --zinc-700: 63 63 70;
+    --zinc-800: 39 39 42;
+    --zinc-850: 32 32 34;
+    --zinc-900: 24 24 27;
+    --zinc-950: 9 9 11;
   }
 
   .theme-light {
@@ -27,10 +53,19 @@
     --text-sidebar-primary: #18181b;
     --text-sidebar-secondary: #71717a;
     --border-subtle: rgba(0, 0, 0, 0.08);
-    --accent: #0891b2;
+    
+    --accent: 8 145 178;
+    --accent-hover: 14 116 144;
+    --panel-dark: 244 244 245;
+    --panel-darker: 228 228 231;
+    
+    --zinc-800: 228 228 231;
+    --zinc-850: 244 244 245;
+    --zinc-900: 255 255 255;
+    --zinc-950: 244 244 245;
   }
 
-  .theme-hybrid {
+  /* .theme-hybrid {
     --bg-app: #18181b;
     --bg-sidebar: #18181b;
     --bg-main: #ffffff;
@@ -39,50 +74,92 @@
     --text-sidebar-primary: #f4f4f5;
     --text-sidebar-secondary: #a1a1aa;
     --border-subtle: rgba(255, 255, 255, 0.08);
-    --accent: #24c8db;
-  }
+    
+    --accent: 36 200 219;
+    --accent-hover: 27 160 176;
+    --panel-dark: 28 28 31;
+    --panel-darker: 18 18 20;
+  } */
+/* 
+  .theme-blue {
+
+    --bg-app: #0b1929;
+    --bg-sidebar: #0d1f3c;
+    --bg-main: #111e33;
+    --text-primary: #e3e8f0;
+    --text-secondary: #7b8faa;
+    --text-sidebar-primary: #e3e8f0;
+    --text-sidebar-secondary: #8899b0;
+    --border-subtle: rgba(100, 150, 220, 0.12);
+    
+    --accent: 26 115 232;
+    --accent-hover: 21 87 176;
+    --panel-dark: 10 22 40;
+    --panel-darker: 8 20 34;
+    
+    --zinc-100: 227 232 240;
+    --zinc-200: 208 221 232;
+    --zinc-300: 192 208 224;
+    --zinc-400: 123 143 170;
+    --zinc-500: 90 122 155;
+    --zinc-600: 30 58 95;
+    --zinc-700: 26 51 85;
+    --zinc-800: 30 58 95;
+    --zinc-850: 17 30 51;
+    --zinc-900: 13 31 60;
+    --zinc-950: 11 25 41;
+  } 
+  */
 
   html, body {
     @apply bg-transparent font-sans overflow-hidden m-0 p-0 transition-colors duration-300;
     background-color: var(--bg-app);
     color: var(--text-primary);
+    font-size: 16px;
   }
 
-  /* 
-   * FIX: Tailwind's global `*::before` reset destroys Monaco Editor's icons.
-   * We must force the `.codicon` elements to retain their custom font.
-   */
+  h1, h2, h3, h4, h5, h6 {
+    font-size: 24px;
+  }
+
+  button, .btn {
+    font-size: 14px;
+  }
+
+  .description, .desc, small {
+    font-size: 14px;
+  }
+
   .codicon, .codicon::before, .codicon::after {
     font-family: "codicon" !important;
   }
 }
 
-/* Custom scrollbar for the 180k line editor */
 ::-webkit-scrollbar {
   width: 12px;
   height: 12px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-zinc-900;
+  background-color: rgb(var(--zinc-900));
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-zinc-700 rounded-full border-4 border-solid border-zinc-900;
+  background-color: rgb(var(--zinc-700));
+  border-radius: 9999px;
+  border: 4px solid rgb(var(--zinc-900));
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-zinc-600;
+  background-color: rgb(var(--zinc-600));
 }
 
-/* Hide spin buttons for Chrome, Safari, Edge, Opera */
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
-/* Hide spin buttons for Firefox */
 input[type=number] {
   -moz-appearance: textfield;
 }
