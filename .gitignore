@@ -23,5 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 
-# Original C# Codebase
+
 sii-decryptsharp-main/
+SCSHub-master/
+
+src/components/settings/appearance-tab.tsx.bak
+src/components/models/savemanager.tsx.bak
