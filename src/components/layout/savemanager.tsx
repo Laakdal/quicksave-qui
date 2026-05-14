@@ -168,7 +168,7 @@ export function SaveManagerView({ onNavigate }: SaveManagerProps) {
                                         key={p.id}
                                         onClick={() => switchProfile(p.id)}
                                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 ${p.id === activeId
-                                            ? 'bg-[#24c8db]/10'
+                                            ? 'bg-accent/10'
                                             : 'hover:bg-zinc-500/10'
                                             }`}
                                     >
@@ -192,7 +192,7 @@ export function SaveManagerView({ onNavigate }: SaveManagerProps) {
                                             </span>
                                         </div>
                                         {p.id === activeId && (
-                                            <div className="w-2 h-2 rounded-full bg-[#24c8db] shrink-0" />
+                                            <div className="w-2 h-2 rounded-full bg-accent shrink-0" />
                                         )}
                                     </button>
                                 ))}
@@ -232,7 +232,7 @@ export function SaveManagerView({ onNavigate }: SaveManagerProps) {
                         <div className="flex gap-2 mt-4">
                             <button 
                                 onClick={handleBrowse}
-                                className="px-4 py-2 rounded-lg text-xs font-semibold bg-[#24c8db] text-black hover:bg-[#20b5c7] transition-colors shadow-lg shadow-[#24c8db]/20"
+                                className="px-4 py-2 rounded-lg text-xs font-semibold bg-accent text-black hover:bg-accent-hover transition-colors shadow-lg shadow-accent/20"
                             >
                                 Browse Folder
                             </button>
