@@ -44,7 +44,8 @@ pub fn run() {
             commands::profile::auto_detect_profiles,
             commands::dialog::pick_folder,
             commands::dialog::pick_file,
-            commands::dialog::save_file_dialog
+            commands::dialog::save_file_dialog,
+            commands::ownedvehicle::get_player_vehicles
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
