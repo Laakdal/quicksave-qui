@@ -40,7 +40,7 @@ export function Titlebar({ setIsSidebarOpen }: TitlebarProps) {
 
         {/* App icon + name */}
         <div className="flex items-center gap-2 ml-1 pointer-events-none">
-          <div className="flex items-center justify-center w-5 h-5 rounded bg-[#24c8db] text-black font-bold text-[11px]">
+          <div className="flex items-center justify-center w-5 h-5 rounded bg-accent text-black font-bold text-[11px]">
             Q
           </div>
           <span className="text-[14px] font-medium" style={{ color: 'var(--text-primary)' }}>Project Quicksave</span>
