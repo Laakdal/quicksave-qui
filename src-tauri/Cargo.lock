@@ -2832,6 +2832,7 @@ dependencies = [
  "aes",
  "cbc",
  "flate2",
+ "regex",
  "ropey",
  "serde",
  "serde_json",
