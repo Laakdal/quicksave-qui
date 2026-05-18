@@ -14,7 +14,6 @@ pub async fn auto_detect_profiles() -> Result<Option<String>, String> {
     let user_profile = std::env::var("USERPROFILE").map_err(|_| "Could not find USERPROFILE environment variable")?;
     let base_path = Path::new(&user_profile);
     
-    // Common paths for ETS2/ATS on Windows
     let paths = vec![
         "Documents/Euro Truck Simulator 2/profiles",
         "Documents/American Truck Simulator/profiles",
