@@ -118,6 +118,27 @@
     font-size: 16px;
   }
 
+  .translucent-effect,
+  .translucent-effect body {
+    background-color: transparent;
+  }
+
+  .translucent-effect {
+    --bg-app: rgba(30, 30, 30, 0.72);
+    --bg-sidebar: rgba(30, 30, 30, 0.64);
+    --bg-main: rgba(30, 30, 30, 0.72);
+    --panel-dark: 38 38 38;
+    --panel-darker: 24 24 27;
+  }
+
+  .translucent-effect.theme-light {
+    --bg-app: rgba(244, 244, 245, 0.72);
+    --bg-sidebar: rgba(244, 244, 245, 0.64);
+    --bg-main: rgba(255, 255, 255, 0.72);
+    --panel-dark: 244 244 245;
+    --panel-darker: 228 228 231;
+  }
+
   h1, h2, h3, h4, h5, h6 {
     font-size: 24px;
   }
