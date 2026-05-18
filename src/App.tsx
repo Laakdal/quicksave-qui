@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Effect, getCurrentWindow } from "@tauri-apps/api/window";
 import { Sidebar } from "./components/layout/sidebar";
 import { Titlebar } from "./components/layout/tittlebar";
 import { DecryptorView } from "./models/decryptor";
@@ -23,6 +24,9 @@ export default function App() {
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem("app_theme") || "dark";
   });
+  const [translucentEffect, setTranslucentEffect] = useState(() => {
+    return localStorage.getItem("translucent_effect") !== "false";
+  });
 
   // Persist state changes to localStorage
   useEffect(() => {
@@ -32,6 +36,18 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("app_theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem("translucent_effect", translucentEffect ? "true" : "false");
+    document.documentElement.classList.toggle("translucent-effect", translucentEffect);
+
+    const appWindow = getCurrentWindow();
+    if (translucentEffect) {
+      appWindow.setEffects({ effects: [Effect.Mica] }).catch(console.error);
+    } else {
+      appWindow.clearEffects().catch(console.error);
+    }
+  }, [translucentEffect]);
 
   // Handle window resize for responsiveness
   useEffect(() => {
@@ -116,6 +132,8 @@ export default function App() {
             <SettingsView
               currentTheme={theme}
               onThemeChange={setTheme}
+              translucentEffect={translucentEffect}
+              onTranslucentEffectChange={setTranslucentEffect}
               initialTab={settingsInitialTab}
               onTabViewed={() => setSettingsInitialTab(undefined)}
             />
