@@ -5,6 +5,8 @@ import { invoke } from "@tauri-apps/api/core";
 interface SettingsViewProps {
   currentTheme: string;
   onThemeChange: (theme: string) => void;
+  translucentEffect: boolean;
+  onTranslucentEffectChange: (enabled: boolean) => void;
   initialTab?: string;
   onTabViewed?: () => void;
 }
@@ -319,9 +321,8 @@ function ColorPickerDialog({ isOpen, onClose, initialColor, onApply }: { isOpen:
   );
 }
 
-export function SettingsView({ currentTheme, onThemeChange, onTabViewed }: SettingsViewProps) {
+export function SettingsView({ currentTheme, onThemeChange, translucentEffect, onTranslucentEffectChange, onTabViewed }: SettingsViewProps) {
   // UI Settings state
-  const [transperencyEffect, setTransparencyEffect] = useState(false);
   const [colorizeBanner, setColorizeBanner] = useState(true);
   const [appTheme, setAppTheme] = useState(currentTheme);
   const [zoom, setZoom] = useState("Use system setting");
@@ -435,8 +436,8 @@ export function SettingsView({ currentTheme, onThemeChange, onTabViewed }: Setti
         {/* ── Personalization ── */}
         <h2 className="text-base font-medium mb-4 mt-8" style={{ color: 'var(--text-primary)' }}>Personalization</h2>
         <div className="flex flex-col gap-2.5">
-          <SettingRow icon={Sparkles} title="Translucent Effect (Windows 11)" desc="Apply translucent effect to windows">
-            <ToggleSwitch checked={transperencyEffect} onChange={setTransparencyEffect} />
+          <SettingRow icon={Sparkles} title="Translucent Effect (Windows 11)" desc="Apply the Windows 11 Mica translucent effect to the app window.">
+            <ToggleSwitch checked={translucentEffect} onChange={onTranslucentEffectChange} />
           </SettingRow>
 
           {/* <SettingRow icon={Droplet} title="Colorize home banner" desc="Dynamic or static color for home top banner (affect performance)">
