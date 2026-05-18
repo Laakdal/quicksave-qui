@@ -7,7 +7,8 @@ import {
     HardDrive,
     ChevronDown,
     User,
-    Check
+    Check,
+    Pencil
 } from "lucide-react";
 
 /* ── Action Button ─────────────────────────────────────────────── */
@@ -74,11 +75,10 @@ function SegmentedTabs({
                 <button
                     key={tab.id}
                     onClick={() => onChange(tab.id)}
-                    className={`px-6 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 border ${
-                        active === tab.id
-                            ? "bg-accent text-black border-accent shadow-lg shadow-accent/20"
-                            : "bg-black/20 border-transparent hover:bg-black/40"
-                    }`}
+                    className={`px-6 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 border ${active === tab.id
+                        ? "bg-accent text-black border-accent shadow-lg shadow-accent/20"
+                        : "bg-black/20 border-transparent hover:bg-black/40"
+                        }`}
                     style={{
                         borderColor: active === tab.id ? "var(--accent)" : "var(--border-subtle)",
                         color: active === tab.id ? "black" : "var(--text-secondary)"
@@ -95,15 +95,43 @@ interface SaveManagerProps {
     onNavigate?: () => void;
 }
 
+type TruckDetail = {
+    id: string;
+    brand_id: string;
+    display_name: string;
+    license_plate: string;
+    accessories: string[];
+    garage: string;
+};
+
+type PlayerVehicles = {
+    trucks: TruckDetail[];
+    my_truck: string | null;
+    assigned_truck: string | null;
+    trailers: string[];
+    assigned_trailer: string | null;
+};
+
+type TruckRow = {
+    id: string;
+    active: boolean;
+    name: string;
+    brand: string;
+    licensePlate: string;
+    accessoriesCount: number;
+    garage: string;
+};
+
 export function SaveManagerView({ onNavigate }: SaveManagerProps) {
     const [activeSubTab, setActiveSubTab] = useState("profile");
 
-    const [profiles, setProfiles] = useState<{id: string, name: string, path: string}[]>([]);
+    const [profiles, setProfiles] = useState<{ id: string, name: string, path: string }[]>([]);
     const [activeProfileId, setActiveProfileId] = useState<string>("");
-    
-    const [saves, setSaves] = useState<{id: string, name: string, path: string}[]>([]);
+
+    const [saves, setSaves] = useState<{ id: string, name: string, path: string }[]>([]);
     const [activeSaveId, setActiveSaveId] = useState<string>("");
-    
+    const [trucks, setTrucks] = useState<TruckRow[]>([]);
+
     const [isReloading, setIsReloading] = useState(false);
 
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
@@ -134,6 +162,14 @@ export function SaveManagerView({ onNavigate }: SaveManagerProps) {
         }
     }, [activeProfileId]);
 
+    useEffect(() => {
+        if (activeSaveId) {
+            loadVehicles();
+        } else {
+            setTrucks([]);
+        }
+    }, [activeSaveId, saves]);
+
     const refreshProfiles = async () => {
         setIsReloading(true);
         try {
@@ -147,12 +183,12 @@ export function SaveManagerView({ onNavigate }: SaveManagerProps) {
                     path = "C:\\Users\\%USERNAME%\\Documents\\Euro Truck Simulator 2\\profiles";
                 }
             }
-            
-            const gameProfiles = await invoke<{id: string, name: string, path: string}[]>("get_game_profiles", {
+
+            const gameProfiles = await invoke<{ id: string, name: string, path: string }[]>("get_game_profiles", {
                 path: path.endsWith("profiles") ? path : `${path}/profiles`
             });
             setProfiles(gameProfiles);
-            
+
             if (gameProfiles.length > 0) {
                 const savedProfileId = localStorage.getItem("active_save_profile");
                 if (savedProfileId && gameProfiles.find(p => p.id === savedProfileId)) {
@@ -172,18 +208,41 @@ export function SaveManagerView({ onNavigate }: SaveManagerProps) {
     const loadSaves = async () => {
         const profile = profiles.find(p => p.id === activeProfileId);
         if (!profile) return;
-        
+
         try {
-            const result = await invoke<{id: string, name: string, path: string}[]>("get_game_saves", { profilePath: profile.path });
+            const result = await invoke<{ id: string, name: string, path: string }[]>("get_game_saves", { profilePath: profile.path });
             setSaves(result);
             if (result.length > 0) {
                 const quick = result.find(s => s.id === "quicksave");
                 setActiveSaveId(quick ? quick.id : result[0].id);
             } else {
                 setActiveSaveId("");
+                setTrucks([]);
             }
         } catch (err) {
             console.error("Failed to load saves:", err);
+        }
+    };
+
+    const loadVehicles = async () => {
+        const save = saves.find(s => s.id === activeSaveId);
+        if (!save) return;
+
+        try {
+            const vehicles = await invoke<PlayerVehicles>("get_player_vehicles", { path: `${save.path}/game.sii` });
+
+            setTrucks(vehicles.trucks.map((truck) => ({
+                id: truck.id,
+                active: truck.id === vehicles.my_truck || truck.id === vehicles.assigned_truck,
+                name: truck.display_name,
+                brand: truck.brand_id,
+                licensePlate: truck.license_plate || "-",
+                accessoriesCount: truck.accessories.length,
+                garage: truck.garage
+            })));
+        } catch (err) {
+            console.error("Failed to load vehicles:", err);
+            setTrucks([]);
         }
     };
 
@@ -196,7 +255,7 @@ export function SaveManagerView({ onNavigate }: SaveManagerProps) {
     return (
         <div className="w-full h-full overflow-y-auto p-9">
             <div className="max-w-[1070px] mx-auto">
-                
+
                 {/* ── Toolbar ────────────────────────────────────────── */}
                 <div
                     className="flex flex-wrap items-center rounded-xl p-3 mb-6"
@@ -304,11 +363,10 @@ export function SaveManagerView({ onNavigate }: SaveManagerProps) {
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveSubTab(tab.id)}
-                                    className={`px-4 py-1.5 font-semibold transition-all select-none ${
-                                        activeSubTab === tab.id
-                                            ? "bg-accent text-black"
-                                            : "hover:bg-zinc-500/10"
-                                    }`}
+                                    className={`px-4 py-1.5 font-semibold transition-all select-none ${activeSubTab === tab.id
+                                        ? "bg-accent text-black"
+                                        : "hover:bg-zinc-500/10"
+                                        }`}
                                     style={
                                         activeSubTab !== tab.id
                                             ? { color: "var(--text-primary)" }
@@ -325,7 +383,7 @@ export function SaveManagerView({ onNavigate }: SaveManagerProps) {
 
                     {/* Right side: Save Slot & Refresh */}
                     <div className="flex items-center gap-2">
-                        
+
                         {/* Save Slot Selector */}
                         <div ref={saveDropdownRef} className="relative">
                             <button
@@ -375,18 +433,90 @@ export function SaveManagerView({ onNavigate }: SaveManagerProps) {
                         </div>
 
                         <div className="w-px h-6 mx-1" style={{ backgroundColor: "var(--border-subtle)" }} />
-                        <ActionBtn 
-                            icon={RefreshCw} 
-                            tooltip="Reload profiles and saves" 
+                        <ActionBtn
+                            icon={RefreshCw}
+                            tooltip="Reload profiles and saves"
                             onClick={refreshProfiles}
                             disabled={isReloading}
                         />
                     </div>
                 </div>
 
+                {activeSubTab === "truck" && (
+                    <div
+                        className="overflow-hidden rounded-xl"
+                        style={{
+                            backgroundColor: "rgb(var(--panel-dark))",
+                            border: "1px solid var(--border-subtle)",
+                        }}
+                    >
+                        <table className="w-full border-collapse text-left text-sm">
+                            <thead>
+                                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                                    <th className="w-16 px-6 py-3 font-semibold" style={{ color: "var(--text-secondary)" }}>
+                                        Active
+                                    </th>
+                                    <th className="px-4 py-3 font-semibold" style={{ color: "var(--text-primary)" }}>
+                                        Truck
+                                    </th>
+                                    <th className="px-4 py-3 font-semibold" style={{ color: "var(--text-primary)" }}>
+                                        License Plate
+                                    </th>
+                                    <th className="px-4 py-3 font-semibold" style={{ color: "var(--text-primary)" }}>
+                                        Garage
+                                    </th>
+                                    <th className="w-24 px-4 py-3 text-right font-semibold" style={{ color: "var(--text-primary)" }}>
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {trucks.length > 0 ? trucks.map((truck) => (
+                                    <tr
+                                        key={truck.id}
+                                        className="transition-colors hover:bg-zinc-500/5"
+                                        style={{ borderBottom: "1px solid var(--border-subtle)" }}
+                                    >
+                                        <td className="px-6 py-4">
+                                            <span
+                                                className={`block h-3 w-3 rounded-full ${truck.active ? "bg-emerald-400" : "bg-zinc-600"}`}
+                                            />
+                                        </td>
+                                        <td className="px-4 py-4 font-semibold" style={{ color: "var(--text-primary)" }}>
+                                            {truck.name}
+                                        </td>
+                                        <td className="px-4 py-4 font-medium" style={{ color: "var(--text-primary)" }}>
+                                            {truck.licensePlate}
+                                        </td>
+                                        <td className="px-4 py-4 font-medium" style={{ color: "var(--text-primary)" }}>
+                                            {truck.garage}
+                                        </td>
+                                        <td className="px-4 py-4 text-right">
+                                            <button
+                                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border transition-all hover:-translate-y-0.5 hover:bg-zinc-500/10"
+                                                style={{
+                                                    color: "var(--accent)",
+                                                    borderColor: "var(--border-subtle)",
+                                                }}
+                                                title="Edit truck"
+                                            >
+                                                <Pencil size={15} strokeWidth={2} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                )) : (
+                                    <tr>
+                                        <td colSpan={5} className="px-6 py-10 text-center" style={{ color: "var(--text-secondary)" }}>
+                                            No trucks found for the selected save.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+
             </div>
         </div>
     );
 }
-
-
