@@ -18,7 +18,7 @@ ABCDEFGHIJKLMNOPQRSTUVWXYZ_";
 
 /// Serialise a set of decoded data blocks into the SiiNunit text format,
 /// returning the result as a `ropey::Rope`.
-pub fn serialize(version: u32, blocks: &[DataBlock]) -> Rope {
+pub fn serialize(_version: u32, blocks: &[DataBlock]) -> Rope {
     let mut rope = Rope::new();
     rope.append(Rope::from_str("SiiNunit\n"));
     rope.append(Rope::from_str("{\n"));
