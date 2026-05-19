@@ -67,6 +67,7 @@ type TruckAccessory = {
     data_path: string;
     lines: string[];
     wheel_offset: number | null;
+    wheel_position: string | null;
     paint_colors: Record<string, string>;
 };
 
@@ -107,8 +108,12 @@ type TruckRow = {
 };
 
 export function SaveManagerView() {
-    const [activeSubTab, setActiveSubTab] = useState("profile");
+    const [activeSubTab, setActiveSubTab] = useState(() => localStorage.getItem("save_manager_active_tab") || "profile");
     const [editingTruck, setEditingTruck] = useState<TruckRow | null>(null);
+
+    useEffect(() => {
+        localStorage.setItem("save_manager_active_tab", activeSubTab);
+    }, [activeSubTab]);
 
     const [profiles, setProfiles] = useState<{ id: string, name: string, path: string }[]>([]);
     const [activeProfileId, setActiveProfileId] = useState<string>("");
@@ -340,7 +345,7 @@ export function SaveManagerView() {
                                     >
                                         <div className="p-1.5">
                                             <p
-                                                className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider"
+                                                className="px-3 py-1.5 text-2xs font-semibold uppercase tracking-wider"
                                                 style={{ color: 'var(--text-secondary)' }}
                                             >
                                                 Profiles
@@ -372,7 +377,7 @@ export function SaveManagerView() {
                                                                 {p.name}
                                                             </span>
                                                             <span
-                                                                className="text-[11px] truncate"
+                                                                className="text-micro truncate"
                                                                 style={{ color: 'var(--text-secondary)' }}
                                                             >
                                                                 {p.id}
@@ -513,7 +518,7 @@ export function SaveManagerView() {
                                             {truck.licensePlate}
                                         </td>
                                         <td className="px-4 py-4 font-medium" style={{ color: "var(--text-primary)" }}>
-                                            {truck.garage}
+                                            {truck.garage.replace("garage.", "").replace(/^\w/, (c) => c.toUpperCase())}
                                         </td>
                                         <td className="px-4 py-4">
                                             <div className="flex items-center justify-end gap-2">
