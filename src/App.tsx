@@ -1,16 +1,16 @@
 import { useState, useEffect } from "react";
 import { Effect, getCurrentWindow } from "@tauri-apps/api/window";
-import { Sidebar } from "./components/layout/sidebar";
-import { Titlebar } from "./components/layout/tittlebar";
-import { DecryptorView } from "./models/decryptor";
-import { SettingsView } from "./models/settings";
-import { SaveManagerView } from "./models/savemanager";
-import { HomeView } from "./components/views/HomeView";
-import { ScsView } from "./components/views/ScsView";
-import { PixView } from "./components/views/PixView";
-import { SxcView } from "./components/views/SxcView";
-import { TobjView } from "./components/views/TobjView";
-import { DefView } from "./components/views/DefView";
+import { Sidebar } from "./components/layout/SideBar";
+import { Titlebar } from "./components/layout/TittleBar";
+import { DecryptorView } from "./pages/quicksave/SIIDecryptor";
+import { SettingsView } from "./pages/settings/SettingsPage";
+import { SaveManagerView } from "./pages/quicksave/SaveManager";
+import { HomeView } from "./pages/HomePage";
+import { ScsView } from "./pages/scs-tools/ScsView";
+import { PixView } from "./pages/scs-tools/PixView";
+import { SxcView } from "./pages/scs-tools/SxcView";
+import { TobjView } from "./pages/scs-tools/TobjView";
+import { DefView } from "./pages/scs-tools/DefView";
 
 export default function App() {
   // Initialize state from localStorage if available, default to true
@@ -123,11 +123,7 @@ export default function App() {
 
           {/* ── Quicksave Views ── */}
           {activeTab === "decryptor" && <DecryptorView />}
-          {activeTab === "save-manager" && (
-            <SaveManagerView
-              onNavigate={() => { setSettingsInitialTab("data"); setActiveTab("settings"); }}
-            />
-          )}
+          {activeTab === "save-manager" && <SaveManagerView />}
           {activeTab === "settings" && (
             <SettingsView
               currentTheme={theme}
