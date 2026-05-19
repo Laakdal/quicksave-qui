@@ -1,5 +1,6 @@
+pub mod save_manager;
+pub mod shared;
 pub mod sii;
-pub mod commands;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -35,17 +36,19 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
-            greet, 
-            decode_sii, 
+            greet,
+            decode_sii,
             decode_sii_path,
             write_file,
-            commands::profile::get_game_profiles,
-            commands::profile::get_game_saves,
-            commands::profile::auto_detect_profiles,
-            commands::dialog::pick_folder,
-            commands::dialog::pick_file,
-            commands::dialog::save_file_dialog,
-            commands::owned_truck::get_player_vehicles
+            shared::profile::get_game_profiles,
+            shared::profile::get_game_saves,
+            shared::profile::auto_detect_profiles,
+            shared::win_dialog::pick_folder,
+            shared::win_dialog::pick_file,
+            shared::win_dialog::save_file_dialog,
+            save_manager::owned_truck::get_player_vehicles,
+            save_manager::owned_truck::save_active_truck,
+            save_manager::owned_truck::save_truck_accessories
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
