@@ -99,7 +99,7 @@ export function Sidebar({
             className="px-4 mb-2 text-sm font-medium select-none uppercase tracking-wider transition-colors duration-300"
             style={{ color: "var(--text-primary)" }}
           >
-            SCS Hub Tools
+            SCS Tools
           </p>
         )}
         <ul className="space-y-0.5 px-1.5">
