@@ -9,6 +9,7 @@ pub struct TruckAccessoryDetail {
     pub data_path: String,
     pub lines: Vec<String>,
     pub wheel_offset: Option<i32>,
+    pub wheel_position: Option<String>,
     pub paint_colors: HashMap<String, String>,
 }
 
@@ -99,6 +100,21 @@ fn parse_wheel_offset(block_type: &str, lines: &[String]) -> Option<i32> {
         .find(|line| line.starts_with("offset:"))
         .and_then(|line| extract_raw_field_value(line))
         .and_then(|value| value.parse::<i32>().ok())
+}
+
+fn parse_wheel_position(block_type: &str, data_path: &str) -> Option<String> {
+    if block_type != "vehicle_wheel_accessory" {
+        return None;
+    }
+
+    let segments: Vec<&str> = data_path.split('/').filter(|segment| !segment.is_empty()).collect();
+    if segments.iter().any(|segment| segment.starts_with("f_")) {
+        return Some("Front".to_string());
+    }
+    if segments.iter().any(|segment| segment.starts_with("r_")) {
+        return Some("Rear".to_string());
+    }
+    Some("Unknown".to_string())
 }
 
 fn parse_paint_colors(block_type: &str, lines: &[String]) -> HashMap<String, String> {
@@ -272,6 +288,7 @@ pub fn get_player_vehicles(path: String) -> Result<PlayerVehicles, String> {
                                 data_path: path.clone(),
                                 lines: acc_lines.clone(),
                                 wheel_offset: parse_wheel_offset(block_type, acc_lines),
+                                wheel_position: parse_wheel_position(block_type, &path),
                                 paint_colors: parse_paint_colors(block_type, acc_lines),
                             });
 
@@ -563,6 +580,37 @@ pub fn save_active_truck(path: String, truck_id: String) -> Result<(), String> {
     }
 
     std::fs::write(&path, result.join("\n")).map_err(|e| format!("Failed to write file: {}", e))
+}
+
+#[cfg(test)]
+mod wheel_position_tests {
+    use super::*;
+
+    #[test]
+    fn parse_wheel_position_reads_front_rear_and_unknown_from_data_path_segments() {
+        assert_eq!(
+            parse_wheel_position(
+                "vehicle_wheel_accessory",
+                "/def/vehicle/f_tire/f315-70_michelin_xlinez.dlc_michelin.sii"
+            ),
+            Some("Front".to_string())
+        );
+        assert_eq!(
+            parse_wheel_position(
+                "vehicle_wheel_accessory",
+                "/def/vehicle/r_disc/rear_disc_01_half_paintable.sii"
+            ),
+            Some("Rear".to_string())
+        );
+        assert_eq!(
+            parse_wheel_position("vehicle_wheel_accessory", "/def/vehicle/wheel/generic.sii"),
+            Some("Unknown".to_string())
+        );
+        assert_eq!(
+            parse_wheel_position("vehicle_accessory", "/def/vehicle/f_tire/not_a_wheel.sii"),
+            None
+        );
+    }
 }
 
 // #[cfg(test)]
