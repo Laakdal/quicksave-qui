@@ -235,7 +235,7 @@ export function DecryptorView() {
               </div>
               <p className="text-sm text-zinc-400 leading-relaxed mb-6">
                 This will decrypt and overwrite the original file at:<br />
-                <span className="text-zinc-200 font-mono text-[11px] block mt-2 p-2 bg-black/30 rounded border border-zinc-800/50 break-all">
+                <span className="text-zinc-200 font-mono text-micro block mt-2 p-2 bg-black/30 rounded border border-zinc-800/50 break-all">
                   {currentFilePath}
                 </span>
               </p>
@@ -322,7 +322,7 @@ export function DecryptorView() {
         ) : (
           <div className="flex-1 bg-panel-darker rounded-lg border border-zinc-800 overflow-hidden relative">
             <div className="absolute inset-0 overflow-auto">
-              <pre className="p-5 text-[13px] leading-relaxed text-zinc-300 font-mono">
+              <pre className="p-5 text-code leading-relaxed text-zinc-300 font-mono">
                 <code>{decryptedText}</code>
               </pre>
             </div>
@@ -344,7 +344,7 @@ export function DecryptorView() {
             </div>
             <div className="flex-1 min-w-0 pr-4">
               <h3 className="text-sm font-bold mb-0.5" style={{ color: 'var(--text-primary)' }}>File Saved Successfully</h3>
-              <p className="text-[10px] truncate opacity-60" style={{ color: 'var(--text-secondary)' }}>
+              <p className="text-2xs truncate opacity-60" style={{ color: 'var(--text-secondary)' }}>
                 {lastSavedPath}
               </p>
             </div>
@@ -365,7 +365,7 @@ export function DecryptorView() {
               onMouseEnter={() => setIsHoveringInstant(true)}
               onMouseLeave={() => setIsHoveringInstant(false)}
               onClick={toggleInstantMode}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all duration-300 border ${isInstantMode
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-2xs font-bold uppercase tracking-wider transition-all duration-300 border ${isInstantMode
                   ? 'bg-accent/10 border-accent/50 text-accent'
                   : 'bg-black/5 border-black/10 hover:bg-black/10'
                 }`}
@@ -380,7 +380,7 @@ export function DecryptorView() {
 
             {isHoveringInstant && (
               <div className="absolute right-0 top-full mt-2 w-48 z-50 p-3 bg-panel-dark border border-zinc-800 rounded-xl shadow-2xl animate-in fade-in zoom-in-95 duration-200 pointer-events-none">
-                <p className="text-[12px] leading-relaxed text-zinc-400">
+                <p className="text-xs leading-relaxed text-zinc-400">
                   <span className="text-accent font-bold block mb-1">Instant Mode</span>
                   Instantly decrypts and overwrites original files upon dropping them into the zone.
                 </p>
@@ -416,7 +416,7 @@ export function DecryptorView() {
             </h3>
             <button
               onClick={clearHistory}
-              className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold text-zinc-500 hover:text-red-400 hover:bg-red-400/10 transition-all uppercase tracking-wider"
+              className="flex items-center gap-1.5 px-2 py-1 rounded-md text-2xs font-bold text-zinc-500 hover:text-red-400 hover:bg-red-400/10 transition-all uppercase tracking-wider"
             >
               <Trash2 size={12} />
               Clear All
@@ -438,7 +438,7 @@ export function DecryptorView() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{item.name}</span>
-                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded flex items-center gap-1 bg-black/5" style={{ color: 'var(--text-secondary)' }}>
+                    <span className="text-2xs font-medium px-1.5 py-0.5 rounded flex items-center gap-1 bg-black/5" style={{ color: 'var(--text-secondary)' }}>
                       <Clock size={10} /> {formatTime(item.timestamp)}
                     </span>
                   </div>
