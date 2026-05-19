@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, HardDrive, RefreshCw, Save as SaveIcon, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, Code2, HardDrive, RefreshCw, RotateCcw, Save as SaveIcon, Trash2, X } from "lucide-react";
 import { ColorPicker } from "../../components/ui/ColorPicker";
+import { SegmentedControl } from "../../components/ui/SegmentedControl";
 
 type TruckAccessory = {
     id: string;
@@ -8,12 +9,14 @@ type TruckAccessory = {
     data_path: string;
     lines: string[];
     wheel_offset: number | null;
+    wheel_position: string | null;
     paint_colors: Record<string, string>;
 };
 
 type AccessoryStatus = "unchanged" | "added" | "edited" | "deleted";
+type AccessorySegment = "all" | "wheels" | "paint" | "other";
 
-type EditableTruckAccessory = TruckAccessory & {
+export type EditableTruckAccessory = TruckAccessory & {
     localId: string;
     status: AccessoryStatus;
 };
@@ -83,16 +86,44 @@ function VSep() {
     return <div className="mx-1 h-7 w-px shrink-0" style={{ backgroundColor: "var(--border-subtle)" }} />;
 }
 
-function groupAccessories(accessories: EditableTruckAccessory[]) {
-    return accessories.reduce<Record<string, Record<string, EditableTruckAccessory[]>>>((groups, accessory) => {
+function TableActionButton({ icon: Icon, label, tone = "accent", onClick }: { icon: React.ElementType; label: string; tone?: "accent" | "danger" | "primary"; onClick: () => void }) {
+    const color = tone === "danger" ? "#f87171" : tone === "accent" ? "var(--accent)" : "var(--text-primary)";
+
+    return (
+        <button
+            onClick={onClick}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border transition-all hover:-translate-y-0.5 hover:bg-zinc-500/10"
+            style={{ color, borderColor: "var(--border-subtle)" }}
+            title={label}
+        >
+            <Icon size={15} strokeWidth={2} />
+        </button>
+    );
+}
+
+type AccessoryDisplayGroups = Record<string, Record<string, Record<string, EditableTruckAccessory[]>>>;
+
+export function filterAccessoriesBySegment(accessories: EditableTruckAccessory[], segment: AccessorySegment) {
+    if (segment === "wheels") return accessories.filter((accessory) => accessory.block_type === "vehicle_wheel_accessory");
+    if (segment === "paint") return accessories.filter((accessory) => accessory.block_type === "vehicle_paint_job_accessory");
+    if (segment === "other") return accessories.filter((accessory) => !["vehicle_wheel_accessory", "vehicle_paint_job_accessory"].includes(accessory.block_type));
+    return accessories;
+}
+
+export function groupAccessoriesForDisplay(accessories: EditableTruckAccessory[]) {
+    return accessories.reduce<AccessoryDisplayGroups>((groups, accessory) => {
         const blockGroup = accessory.block_type;
+        const positionGroup = accessory.block_type === "vehicle_wheel_accessory"
+            ? accessory.wheel_position ?? "Unknown"
+            : "All";
         const offsetGroup = accessory.block_type === "vehicle_wheel_accessory"
             ? `Offset ${accessory.wheel_offset ?? "unknown"}`
             : "All";
 
         groups[blockGroup] ??= {};
-        groups[blockGroup][offsetGroup] ??= [];
-        groups[blockGroup][offsetGroup].push(accessory);
+        groups[blockGroup][positionGroup] ??= {};
+        groups[blockGroup][positionGroup][offsetGroup] ??= [];
+        groups[blockGroup][positionGroup][offsetGroup].push(accessory);
         return groups;
     }, {});
 }
@@ -108,6 +139,8 @@ export function SaveEditAction({ truck, activeProfileName, activeSaveName, isRel
     const [draftBlock, setDraftBlock] = useState("");
     const [showBackWarning, setShowBackWarning] = useState(false);
     const [colorEdit, setColorEdit] = useState<{ accessoryId: string; field: string; value: string } | null>(null);
+    const [isTruckInfoOpen, setIsTruckInfoOpen] = useState(true);
+    const [accessorySegment, setAccessorySegment] = useState<AccessorySegment>("all");
 
     useEffect(() => {
         setAccessories(truck.accessories.map((accessory) => ({
@@ -119,7 +152,8 @@ export function SaveEditAction({ truck, activeProfileName, activeSaveName, isRel
         setDraftBlock("");
     }, [truck.id, truck.accessories]);
 
-    const groupedAccessories = useMemo(() => groupAccessories(accessories), [accessories]);
+    const filteredAccessories = useMemo(() => filterAccessoriesBySegment(accessories, accessorySegment), [accessories, accessorySegment]);
+    const groupedAccessories = useMemo(() => groupAccessoriesForDisplay(filteredAccessories), [filteredAccessories]);
     const editingAccessory = accessories.find((accessory) => accessory.localId === editingAccessoryId) || null;
     const hasUnsavedChanges = accessories.some((accessory) => accessory.status !== "unchanged");
 
@@ -198,15 +232,20 @@ export function SaveEditAction({ truck, activeProfileName, activeSaveName, isRel
         <div className="h-full w-full overflow-y-auto p-9">
             <div className="mx-auto max-w-[1070px]">
                 <div
-                    className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl p-3"
+                    className="mb-6 flex flex-wrap items-center rounded-xl p-3"
                     style={{ backgroundColor: "rgb(var(--panel-dark))", border: "1px solid var(--border-subtle)" }}
                 >
                     <div className="flex items-center gap-2">
                         <BackButton onClick={handleBack} />
-                        <VSep />
                         <ToolbarSummary icon={HardDrive} text={activeProfileName} />
                         <ToolbarSummary icon={SaveIcon} text={activeSaveName} />
                     </div>
+
+                    <VSep />
+
+                    <div className="flex-1" />
+
+                    <VSep />
 
                     <div className="flex items-center gap-2">
                         <ToolbarButton
@@ -236,19 +275,33 @@ export function SaveEditAction({ truck, activeProfileName, activeSaveName, isRel
                 </div>
 
                 <div
-                    className="rounded-xl p-6"
+                    className="overflow-hidden rounded-xl"
                     style={{ backgroundColor: "rgb(var(--panel-dark))", border: "1px solid var(--border-subtle)" }}
                 >
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>
-                        Edit Truck
-                    </p>
-                    <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>{truck.name}</h1>
-                    <div className="mt-5 grid gap-3 text-sm md:grid-cols-2">
-                        <div style={{ color: "var(--text-secondary)" }}>Brand: <span style={{ color: "var(--text-primary)" }}>{truck.brand}</span></div>
-                        <div style={{ color: "var(--text-secondary)" }}>License Plate: <span style={{ color: "var(--text-primary)" }}>{truck.licensePlate}</span></div>
-                        <div style={{ color: "var(--text-secondary)" }}>Garage: <span style={{ color: "var(--text-primary)" }}>{truck.garage}</span></div>
-                        <div style={{ color: "var(--text-secondary)" }}>Accessories: <span style={{ color: "var(--text-primary)" }}>{truck.accessoriesCount}</span></div>
-                    </div>
+                    <button
+                        className="flex w-full items-center justify-between gap-4 p-6 text-left transition-colors hover:bg-zinc-500/5"
+                        onClick={() => setIsTruckInfoOpen((open) => !open)}
+                    >
+                        <div className="min-w-0">
+                            <p className="mb-2 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>
+                                Truck Information
+                            </p>
+                            <h1 className="truncate text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>{truck.name}</h1>
+                        </div>
+                        <ChevronDown
+                            size={18}
+                            className={`shrink-0 transition-transform ${isTruckInfoOpen ? "rotate-180" : ""}`}
+                            style={{ color: "var(--text-secondary)" }}
+                        />
+                    </button>
+                    {isTruckInfoOpen && (
+                        <div className="grid gap-3 border-t p-6 pt-5 text-sm md:grid-cols-2" style={{ borderColor: "var(--border-subtle)" }}>
+                            <div style={{ color: "var(--text-secondary)" }}>Brand: <span style={{ color: "var(--text-primary)" }}>{truck.brand}</span></div>
+                            <div style={{ color: "var(--text-secondary)" }}>License Plate: <span style={{ color: "var(--text-primary)" }}>{truck.licensePlate}</span></div>
+                            <div style={{ color: "var(--text-secondary)" }}>Garage: <span style={{ color: "var(--text-primary)" }}>{truck.garage.replace("garage.", "").replace(/^\w/, (c) => c.toUpperCase())}</span></div>
+                            <div style={{ color: "var(--text-secondary)" }}>Accessories: <span style={{ color: "var(--text-primary)" }}>{truck.accessoriesCount}</span></div>
+                        </div>
+                    )}
                 </div>
 
                 <div
@@ -256,79 +309,91 @@ export function SaveEditAction({ truck, activeProfileName, activeSaveName, isRel
                     style={{ backgroundColor: "rgb(var(--panel-dark))", border: "1px solid var(--border-subtle)" }}
                 >
                     <div className="mb-5 flex items-center justify-between gap-3">
-                        <div>
-                            <p className="mb-1 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>
-                                Accessories
-                            </p>
-                            <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
-                                {truck.accessoriesCount} parsed blocks
-                            </h2>
-                        </div>
+                        <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>
+                            Accessories
+                        </p>
+                        <SegmentedControl
+                            items={[
+                                { id: "all", label: "All" },
+                                { id: "wheels", label: "Wheels" },
+                                { id: "paint", label: "Paint" },
+                                { id: "other", label: "Other" },
+                            ]}
+                            value={accessorySegment}
+                            onChange={(id) => setAccessorySegment(id as AccessorySegment)}
+                            size="sm"
+                        />
                     </div>
 
                     <div className="space-y-5">
-                        {Object.entries(groupedAccessories).map(([blockType, offsetGroups]) => (
-                            <div key={blockType} className="rounded-lg border p-4" style={{ borderColor: "var(--border-subtle)" }}>
-                                <h3 className="mb-3 font-mono text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-primary)" }}>
-                                    {blockType}
-                                </h3>
-                                <div className="space-y-3">
-                                    {Object.entries(offsetGroups).map(([offsetLabel, groupItems]) => (
-                                        <div key={offsetLabel}>
-                                            {offsetLabel !== "All" && (
-                                                <p className="mb-2 text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>{offsetLabel}</p>
+                        {Object.entries(groupedAccessories).map(([blockType, positionGroups]) => (
+                            <section key={blockType} className="space-y-3">
+                                <div className="space-y-4">
+                                    {Object.entries(positionGroups).map(([positionLabel, offsetGroups]) => (
+                                        <div key={positionLabel} className="space-y-3">
+                                            {positionLabel !== "All" && (
+                                                <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{positionLabel}</p>
                                             )}
-                                            <div className="space-y-2">
-                                                {groupItems.map((accessory) => (
-                                                    <div
-                                                        key={accessory.localId}
-                                                        className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 ${accessory.status === "deleted" ? "opacity-50" : ""}`}
-                                                        style={{ borderColor: "var(--border-subtle)", backgroundColor: "rgba(0,0,0,0.18)" }}
-                                                    >
-                                                        <div className="min-w-0">
-                                                            <p className="truncate font-mono text-xs" style={{ color: "var(--text-primary)" }}>{accessory.data_path}</p>
-                                                            <p className="mt-1 font-mono text-[11px]" style={{ color: "var(--text-secondary)" }}>{accessory.id}</p>
-                                                        </div>
-                                                        <div className="flex shrink-0 items-center gap-2">
-                                                            {accessory.status !== "unchanged" && (
-                                                                <span className="rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase" style={{ color: "var(--accent)", borderColor: "var(--border-subtle)" }}>
-                                                                    {accessory.status}
-                                                                </span>
-                                                            )}
-                                                            {accessory.block_type === "vehicle_paint_job_accessory" && Object.entries(accessory.paint_colors).map(([field, value]) => {
-                                                                const pickerValue = parseRgbTuple(value);
-                                                                if (!pickerValue) return null;
-                                                                return (
-                                                                    <button
-                                                                        key={field}
-                                                                        className="rounded-md px-2 py-1 text-xs hover:bg-zinc-500/10"
-                                                                        style={{ color: "var(--accent)" }}
-                                                                        onClick={() => setColorEdit({ accessoryId: accessory.localId, field, value: pickerValue })}
+                                            {Object.entries(offsetGroups).map(([offsetLabel, groupItems]) => (
+                                                <div key={offsetLabel} className="space-y-2">
+                                                    {offsetLabel !== "All" && (
+                                                        <p className="text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>{offsetLabel}</p>
+                                                    )}
+                                                    <div className="overflow-hidden rounded-xl" style={{ border: "1px solid var(--border-subtle)" }}>
+                                                        <table className="w-full border-collapse text-left text-sm">
+                                                            <thead>
+                                                                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                                                                    <th className="px-4 py-3 font-semibold" style={{ color: "var(--text-primary)" }}>Path</th>
+                                                                    <th className="px-4 py-3 font-semibold" style={{ color: "var(--text-primary)" }}>ID</th>
+                                                                    <th className="w-28 px-4 py-3 text-right font-semibold" style={{ color: "var(--text-primary)" }}>Actions</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {groupItems.map((accessory) => (
+                                                                    <tr
+                                                                        key={accessory.localId}
+                                                                        className={`transition-colors hover:bg-zinc-500/5 ${accessory.status === "deleted" ? "opacity-50" : ""}`}
+                                                                        style={{ borderBottom: "1px solid var(--border-subtle)" }}
                                                                     >
-                                                                        {field}
-                                                                    </button>
-                                                                );
-                                                            })}
-                                                            <button className="rounded-md px-2 py-1 text-xs hover:bg-zinc-500/10" style={{ color: "var(--text-primary)" }} onClick={() => openBlockEditor(accessory)}>
-                                                                View/Edit Block
-                                                            </button>
-                                                            {accessory.status === "deleted" ? (
-                                                                <button className="rounded-md px-2 py-1 text-xs hover:bg-zinc-500/10" style={{ color: "var(--accent)" }} onClick={() => restoreAccessory(accessory.localId)}>
-                                                                    Restore
-                                                                </button>
-                                                            ) : (
-                                                                <button className="rounded-md px-2 py-1 text-xs hover:bg-red-500/10" style={{ color: "#f87171" }} onClick={() => markDeleted(accessory.localId)}>
-                                                                    Delete
-                                                                </button>
-                                                            )}
-                                                        </div>
+                                                                        <td className="max-w-[520px] px-4 py-3">
+                                                                            <p className="truncate font-mono text-xs" style={{ color: "var(--text-primary)" }}>{accessory.data_path}</p>
+                                                                        </td>
+                                                                        <td className="max-w-[260px] px-4 py-3">
+                                                                            <p className="truncate font-mono text-micro" style={{ color: "var(--text-secondary)" }}>{accessory.id}</p>
+                                                                        </td>
+                                                                        <td className="px-4 py-3">
+                                                                            <div className="flex items-center justify-end gap-2">
+                                                                                {accessory.block_type === "vehicle_paint_job_accessory" && Object.entries(accessory.paint_colors).map(([field, value]) => {
+                                                                                    const pickerValue = parseRgbTuple(value);
+                                                                                    if (!pickerValue) return null;
+                                                                                    return (
+                                                                                        <TableActionButton
+                                                                                            key={field}
+                                                                                            icon={Code2}
+                                                                                            label={field}
+                                                                                            onClick={() => setColorEdit({ accessoryId: accessory.localId, field, value: pickerValue })}
+                                                                                        />
+                                                                                    );
+                                                                                })}
+                                                                                <TableActionButton icon={Code2} label="View/Edit Block" tone="primary" onClick={() => openBlockEditor(accessory)} />
+                                                                                {accessory.status === "deleted" ? (
+                                                                                    <TableActionButton icon={RotateCcw} label="Restore" onClick={() => restoreAccessory(accessory.localId)} />
+                                                                                ) : (
+                                                                                    <TableActionButton icon={Trash2} label="Delete" tone="danger" onClick={() => markDeleted(accessory.localId)} />
+                                                                                )}
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
                                                     </div>
-                                                ))}
-                                            </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     ))}
                                 </div>
-                            </div>
+                            </section>
                         ))}
                     </div>
                 </div>
