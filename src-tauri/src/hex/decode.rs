@@ -1,0 +1,380 @@
+// avx2 decode modified from https://github.com/zbjornson/fast-hex/blob/master/src/hex.cc
+
+#[cfg(target_arch = "aarch64")]
+use core::arch::aarch64::*;
+#[cfg(target_arch = "x86")]
+use core::arch::x86::*;
+#[cfg(target_arch = "x86_64")]
+use core::arch::x86_64::*;
+
+use super::error::Error;
+
+const NIL: u8 = u8::MAX;
+
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+const T_MASK: i32 = 65535;
+
+const fn init_unhex_array(check_case: CheckCase) -> [u8; 256] {
+    let mut arr = [0; 256];
+    let mut i = 0;
+    while i < 256 {
+        arr[i] = match i as u8 {
+            b'0'..=b'9' => i as u8 - b'0',
+            b'a'..=b'f' => match check_case {
+                CheckCase::Lower | CheckCase::None => i as u8 - b'a' + 10,
+                _ => NIL,
+            },
+            b'A'..=b'F' => match check_case {
+                CheckCase::Upper | CheckCase::None => i as u8 - b'A' + 10,
+                _ => NIL,
+            },
+            _ => NIL,
+        };
+        i += 1;
+    }
+    arr
+}
+
+const fn init_unhex4_array(check_case: CheckCase) -> [u8; 256] {
+    let unhex_arr = init_unhex_array(check_case);
+
+    let mut unhex4_arr = [NIL; 256];
+    let mut i = 0;
+    while i < 256 {
+        if unhex_arr[i] != NIL {
+            unhex4_arr[i] = unhex_arr[i] << 4;
+        }
+        i += 1;
+    }
+    unhex4_arr
+}
+
+// ASCII -> hex
+pub(crate) static UNHEX: [u8; 256] = init_unhex_array(CheckCase::None);
+
+// ASCII -> hex, lower case
+pub(crate) static UNHEX_LOWER: [u8; 256] = init_unhex_array(CheckCase::Lower);
+
+// ASCII -> hex, upper case
+pub(crate) static UNHEX_UPPER: [u8; 256] = init_unhex_array(CheckCase::Upper);
+
+// ASCII -> hex << 4
+pub(crate) static UNHEX4: [u8; 256] = init_unhex4_array(CheckCase::None);
+
+const _0213: i32 = 0b11011000;
+
+// lower nibble
+#[inline]
+fn unhex_b(x: usize) -> u8 {
+    UNHEX[x]
+}
+
+// upper nibble, logically equivalent to unhex_b(x) << 4
+#[inline]
+fn unhex_a(x: usize) -> u8 {
+    UNHEX4[x]
+}
+
+#[inline]
+#[target_feature(enable = "avx2")]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+unsafe fn unhex_avx2(value: __m256i) -> __m256i {
+    let sr6 = _mm256_srai_epi16(value, 6);
+    let and15 = _mm256_and_si256(value, _mm256_set1_epi16(0xf));
+    let mul = _mm256_maddubs_epi16(sr6, _mm256_set1_epi16(9));
+    _mm256_add_epi16(mul, and15)
+}
+
+// (a << 4) | b;
+#[inline]
+#[target_feature(enable = "avx2")]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+unsafe fn nib2byte_avx2(a1: __m256i, b1: __m256i, a2: __m256i, b2: __m256i) -> __m256i {
+    let a4_1 = _mm256_slli_epi16(a1, 4);
+    let a4_2 = _mm256_slli_epi16(a2, 4);
+    let a4orb_1 = _mm256_or_si256(a4_1, b1);
+    let a4orb_2 = _mm256_or_si256(a4_2, b2);
+    let pck1 = _mm256_packus_epi16(a4orb_1, a4orb_2);
+    _mm256_permute4x64_epi64(pck1, _0213)
+}
+
+/// Check if the input is valid hex bytes slice
+pub fn hex_check(src: &[u8]) -> bool {
+    hex_check_with_case(src, CheckCase::None)
+}
+
+/// Check if the input is valid hex bytes slice with case check
+pub fn hex_check_with_case(src: &[u8], check_case: CheckCase) -> bool {
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    {
+        match super::vectorization_support() {
+            super::Vectorization::AVX2 | super::Vectorization::SSE41 => unsafe {
+                hex_check_sse_with_case(src, check_case)
+            },
+            super::Vectorization::None => hex_check_fallback_with_case(src, check_case),
+        }
+    }
+
+    #[cfg(target_arch = "aarch64")]
+    {
+        match super::vectorization_support() {
+            super::Vectorization::Neon => unsafe { hex_check_neon_with_case(src, check_case) },
+            super::Vectorization::None => hex_check_fallback_with_case(src, check_case),
+        }
+    }
+
+    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64")))]
+    hex_check_fallback_with_case(src, check_case)
+}
+
+/// Check if the input is valid hex bytes slice
+pub fn hex_check_fallback(src: &[u8]) -> bool {
+    hex_check_fallback_with_case(src, CheckCase::None)
+}
+
+/// Check if the input is valid hex bytes slice with case check
+pub fn hex_check_fallback_with_case(src: &[u8], check_case: CheckCase) -> bool {
+    match check_case {
+        CheckCase::None => src.iter().all(|&x| UNHEX[x as usize] != NIL),
+        CheckCase::Lower => src.iter().all(|&x| UNHEX_LOWER[x as usize] != NIL),
+        CheckCase::Upper => src.iter().all(|&x| UNHEX_UPPER[x as usize] != NIL),
+    }
+}
+
+/// # Safety
+/// Check if a byte slice is valid.
+#[target_feature(enable = "sse4.1")]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+pub unsafe fn hex_check_sse(src: &[u8]) -> bool {
+    hex_check_sse_with_case(src, CheckCase::None)
+}
+
+#[derive(Eq, PartialEq)]
+pub enum CheckCase {
+    None,
+    Lower,
+    Upper,
+}
+
+/// # Safety
+/// Check if a byte slice is valid on given check_case.
+#[target_feature(enable = "sse4.1")]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+pub unsafe fn hex_check_sse_with_case(mut src: &[u8], check_case: CheckCase) -> bool {
+    let ascii_zero = _mm_set1_epi8((b'0' - 1) as i8);
+    let ascii_nine = _mm_set1_epi8((b'9' + 1) as i8);
+    let ascii_ua = _mm_set1_epi8((b'A' - 1) as i8);
+    let ascii_uf = _mm_set1_epi8((b'F' + 1) as i8);
+    let ascii_la = _mm_set1_epi8((b'a' - 1) as i8);
+    let ascii_lf = _mm_set1_epi8((b'f' + 1) as i8);
+
+    while src.len() >= 16 {
+        let unchecked = _mm_loadu_si128(src.as_ptr() as *const _);
+
+        let gt0 = _mm_cmpgt_epi8(unchecked, ascii_zero);
+        let lt9 = _mm_cmplt_epi8(unchecked, ascii_nine);
+        let valid_digit = _mm_and_si128(gt0, lt9);
+
+        let (valid_la_lf, valid_ua_uf) = match check_case {
+            CheckCase::None => {
+                let gtua = _mm_cmpgt_epi8(unchecked, ascii_ua);
+                let ltuf = _mm_cmplt_epi8(unchecked, ascii_uf);
+
+                let gtla = _mm_cmpgt_epi8(unchecked, ascii_la);
+                let ltlf = _mm_cmplt_epi8(unchecked, ascii_lf);
+
+                (
+                    Some(_mm_and_si128(gtla, ltlf)),
+                    Some(_mm_and_si128(gtua, ltuf)),
+                )
+            }
+            CheckCase::Lower => {
+                let gtla = _mm_cmpgt_epi8(unchecked, ascii_la);
+                let ltlf = _mm_cmplt_epi8(unchecked, ascii_lf);
+
+                (Some(_mm_and_si128(gtla, ltlf)), None)
+            }
+            CheckCase::Upper => {
+                let gtua = _mm_cmpgt_epi8(unchecked, ascii_ua);
+                let ltuf = _mm_cmplt_epi8(unchecked, ascii_uf);
+                (None, Some(_mm_and_si128(gtua, ltuf)))
+            }
+        };
+
+        let valid_letter = match (valid_la_lf, valid_ua_uf) {
+            (Some(valid_lower), Some(valid_upper)) => _mm_or_si128(valid_lower, valid_upper),
+            (Some(valid_lower), None) => valid_lower,
+            (None, Some(valid_upper)) => valid_upper,
+            _ => unreachable!(),
+        };
+
+        let ret = _mm_movemask_epi8(_mm_or_si128(valid_digit, valid_letter));
+
+        if ret != T_MASK {
+            return false;
+        }
+
+        src = &src[16..];
+    }
+    hex_check_fallback_with_case(src, check_case)
+}
+
+#[target_feature(enable = "neon")]
+#[cfg(target_arch = "aarch64")]
+pub unsafe fn hex_check_neon(src: &[u8]) -> bool {
+    hex_check_neon_with_case(src, CheckCase::None)
+}
+
+#[target_feature(enable = "neon")]
+#[cfg(target_arch = "aarch64")]
+pub unsafe fn hex_check_neon_with_case(mut src: &[u8], check_case: CheckCase) -> bool {
+    let ascii_zero = vdupq_n_u8(b'0' - 1);
+    let ascii_nine = vdupq_n_u8(b'9' + 1);
+    let ascii_ua = vdupq_n_u8(b'A' - 1);
+    let ascii_uf = vdupq_n_u8(b'F' + 1);
+    let ascii_la = vdupq_n_u8(b'a' - 1);
+    let ascii_lf = vdupq_n_u8(b'f' + 1);
+
+    while src.len() >= 16 {
+        let unchecked = vld1q_u8(src.as_ptr() as *const _);
+
+        let gt0 = vcgtq_u8(unchecked, ascii_zero);
+        let lt9 = vcltq_u8(unchecked, ascii_nine);
+        let valid_digit = vandq_u8(gt0, lt9);
+
+        let (valid_la_lf, valid_ua_uf) = match check_case {
+            CheckCase::None => {
+                let gtua = vcgtq_u8(unchecked, ascii_ua);
+                let ltuf = vcltq_u8(unchecked, ascii_uf);
+
+                let gtla = vcgtq_u8(unchecked, ascii_la);
+                let ltlf = vcltq_u8(unchecked, ascii_lf);
+
+                (Some(vandq_u8(gtla, ltlf)), Some(vandq_u8(gtua, ltuf)))
+            }
+            CheckCase::Lower => {
+                let gtla = vcgtq_u8(unchecked, ascii_la);
+                let ltlf = vcltq_u8(unchecked, ascii_lf);
+
+                (Some(vandq_u8(gtla, ltlf)), None)
+            }
+            CheckCase::Upper => {
+                let gtua = vcgtq_u8(unchecked, ascii_ua);
+                let ltuf = vcltq_u8(unchecked, ascii_uf);
+
+                (None, Some(vandq_u8(gtua, ltuf)))
+            }
+        };
+
+        let valid_letter = match (valid_la_lf, valid_ua_uf) {
+            (Some(valid_lower), Some(valid_upper)) => vorrq_u8(valid_lower, valid_upper),
+            (Some(valid_lower), None) => valid_lower,
+            (None, Some(valid_upper)) => valid_upper,
+            _ => unreachable!(),
+        };
+
+        let ret = vminvq_u8(vorrq_u8(valid_digit, valid_letter));
+
+        if ret == 0 {
+            return false;
+        }
+
+        src = &src[16..];
+    }
+
+    hex_check_fallback_with_case(src, check_case)
+}
+
+/// Hex decode src into dst.
+/// The length of src must be even, and it's allowed to decode a zero length src.
+/// The length of dst must be at least src.len() / 2.
+pub fn hex_decode(src: &[u8], dst: &mut [u8]) -> Result<(), Error> {
+    hex_decode_with_case(src, dst, CheckCase::None)
+}
+
+/// Hex decode src into dst.
+/// The length of src must be even, and it's allowed to decode a zero length src.
+/// The length of dst must be at least src.len() / 2.
+/// when check_case is CheckCase::Lower, the hex string must be lower case.
+/// when check_case is CheckCase::Upper, the hex string must be upper case.
+/// when check_case is CheckCase::None, the hex string can be lower case or upper case.
+pub fn hex_decode_with_case(
+    src: &[u8],
+    dst: &mut [u8],
+    check_case: CheckCase,
+) -> Result<(), Error> {
+    let len = dst.len().checked_mul(2).ok_or(Error::Overflow)?;
+    if src.len() < len || ((src.len() & 1) != 0) {
+        return Err(Error::InvalidLength(len));
+    }
+
+    if !hex_check_with_case(src, check_case) {
+        return Err(Error::InvalidChar);
+    }
+    hex_decode_unchecked(src, dst);
+    Ok(())
+}
+
+pub fn hex_decode_unchecked(src: &[u8], dst: &mut [u8]) {
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    {
+        match super::vectorization_support() {
+            super::Vectorization::AVX2 => unsafe { hex_decode_avx2(src, dst) },
+            super::Vectorization::None | super::Vectorization::SSE41 => {
+                hex_decode_fallback(src, dst)
+            }
+        }
+    }
+    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+    hex_decode_fallback(src, dst);
+}
+
+#[target_feature(enable = "avx2")]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+unsafe fn hex_decode_avx2(mut src: &[u8], mut dst: &mut [u8]) {
+    // 0, -1, 2, -1, 4, -1, 6, -1, 8, -1, 10, -1, 12, -1, 14, -1,
+    // 0, -1, 2, -1, 4, -1, 6, -1, 8, -1, 10, -1, 12, -1, 14, -1
+    let mask_a = _mm256_setr_epi8(
+        0, -1, 2, -1, 4, -1, 6, -1, 8, -1, 10, -1, 12, -1, 14, -1, 0, -1, 2, -1, 4, -1, 6, -1, 8,
+        -1, 10, -1, 12, -1, 14, -1,
+    );
+
+    // 1, -1, 3, -1, 5, -1, 7, -1, 9, -1, 11, -1, 13, -1, 15, -1,
+    // 1, -1, 3, -1, 5, -1, 7, -1, 9, -1, 11, -1, 13, -1, 15, -1
+    let mask_b = _mm256_setr_epi8(
+        1, -1, 3, -1, 5, -1, 7, -1, 9, -1, 11, -1, 13, -1, 15, -1, 1, -1, 3, -1, 5, -1, 7, -1, 9,
+        -1, 11, -1, 13, -1, 15, -1,
+    );
+
+    while dst.len() >= 32 {
+        let av1 = _mm256_loadu_si256(src.as_ptr() as *const _);
+        let av2 = _mm256_loadu_si256(src[32..].as_ptr() as *const _);
+
+        let mut a1 = _mm256_shuffle_epi8(av1, mask_a);
+        let mut b1 = _mm256_shuffle_epi8(av1, mask_b);
+        let mut a2 = _mm256_shuffle_epi8(av2, mask_a);
+        let mut b2 = _mm256_shuffle_epi8(av2, mask_b);
+
+        a1 = unhex_avx2(a1);
+        a2 = unhex_avx2(a2);
+        b1 = unhex_avx2(b1);
+        b2 = unhex_avx2(b2);
+
+        let bytes = nib2byte_avx2(a1, b1, a2, b2);
+
+        //dst does not need to be aligned on any particular boundary
+        _mm256_storeu_si256(dst.as_mut_ptr() as *mut _, bytes);
+        dst = &mut dst[32..];
+        src = &src[64..];
+    }
+    hex_decode_fallback(src, dst)
+}
+
+pub fn hex_decode_fallback(src: &[u8], dst: &mut [u8]) {
+    for (slot, bytes) in dst.iter_mut().zip(src.chunks_exact(2)) {
+        let a = unhex_a(bytes[0] as usize);
+        let b = unhex_b(bytes[1] as usize);
+        *slot = a | b;
+    }
+}
+
