@@ -30,6 +30,52 @@ fn write_file(path: String, contents: String) -> Result<(), String> {
     std::fs::write(&path, contents).map_err(|e| format!("Failed to write file: {}", e))
 }
 
+#[cfg(target_os = "windows")]
+#[tauri::command]
+fn apply_window_mica(window: tauri::Window) -> Result<(), String> {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+
+    let handle = window
+        .window_handle()
+        .map_err(|error| format!("Failed to get window handle: {error}"))?;
+
+    let hwnd = match handle.as_raw() {
+        RawWindowHandle::Win32(handle) => handle.hwnd.get() as _,
+        _ => return Err("Mica is only available on Windows.".to_string()),
+    };
+
+    shared::win_translucent::apply_mica(hwnd, Some(true)).map_err(|error| error.to_string())
+}
+
+#[cfg(not(target_os = "windows"))]
+#[tauri::command]
+fn apply_window_mica(_window: tauri::Window) -> Result<(), String> {
+    Err("Mica is only available on Windows.".to_string())
+}
+
+#[cfg(target_os = "windows")]
+#[tauri::command]
+fn clear_window_mica(window: tauri::Window) -> Result<(), String> {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+
+    let handle = window
+        .window_handle()
+        .map_err(|error| format!("Failed to get window handle: {error}"))?;
+
+    let hwnd = match handle.as_raw() {
+        RawWindowHandle::Win32(handle) => handle.hwnd.get() as _,
+        _ => return Err("Mica is only available on Windows.".to_string()),
+    };
+
+    shared::win_translucent::clear_mica(hwnd).map_err(|error| error.to_string())
+}
+
+#[cfg(not(target_os = "windows"))]
+#[tauri::command]
+fn clear_window_mica(_window: tauri::Window) -> Result<(), String> {
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -40,6 +86,8 @@ pub fn run() {
             decode_sii,
             decode_sii_path,
             write_file,
+            apply_window_mica,
+            clear_window_mica,
             shared::profile::get_game_profiles,
             shared::profile::get_game_saves,
             shared::profile::auto_detect_profiles,
