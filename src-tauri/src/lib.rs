@@ -48,7 +48,10 @@ pub fn run() {
             shared::win_dialog::save_file_dialog,
             save_manager::owned_truck::get_player_vehicles,
             save_manager::owned_truck::save_active_truck,
-            save_manager::owned_truck::save_truck_accessories
+            save_manager::owned_truck::save_truck_accessories,
+            save_manager::vault::list_locked_blocks,
+            save_manager::vault::lock_block,
+            save_manager::vault::unlock_block
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
