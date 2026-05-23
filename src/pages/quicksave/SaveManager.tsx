@@ -273,7 +273,6 @@ export function SaveManagerView() {
                 isReloading={isReloading}
                 canSave={Boolean(activeSaveGamePath)}
                 onSave={async (changes: SaveTruckAccessoryChange[]) => {
-                    await handleActivateTruck(editingTruck.id);
                     if (changes.length > 0 && activeSaveGamePath) {
                         await invoke("save_truck_accessories", {
                             request: {
@@ -399,7 +398,7 @@ export function SaveManagerView() {
                     <VSep />
 
                     {/* Middle: Mode Switcher */}
-                    <div className="flex-1 flex justify-center">
+                    <div className="flex-1 flex justify-center items-center gap-4">
                         <SegmentedControl
                             items={tabs}
                             value={activeSubTab}
