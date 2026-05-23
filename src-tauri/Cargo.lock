@@ -2832,6 +2832,7 @@ dependencies = [
  "aes",
  "cbc",
  "flate2",
+ "raw-window-handle",
  "regex",
  "ropey",
  "serde",
@@ -2840,6 +2841,8 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-dialog",
  "tauri-plugin-opener",
+ "windows-sys 0.59.0",
+ "windows-version",
 ]
 
 [[package]]
