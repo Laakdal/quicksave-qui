@@ -4,7 +4,6 @@ import { invoke } from "@tauri-apps/api/core";
 import {
     RefreshCw,
     Save as SaveIcon,
-    HardDrive,
     ChevronDown,
     User,
     Check,
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 import { SaveEditAction } from "./SaveEditAction";
 import { SegmentedControl } from "../../components/ui/SegmentedControl";
+import { RichDropdown } from "../../components/ui/DropdownBase";
 
 /* ── Action Button ─────────────────────────────────────────────── */
 function ActionBtn({
@@ -124,16 +124,11 @@ export function SaveManagerView() {
 
     const [isReloading, setIsReloading] = useState(false);
 
-    const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
     const [isSavesDropdownOpen, setIsSavesDropdownOpen] = useState(false);
-    const profileDropdownRef = useRef<HTMLDivElement>(null);
     const saveDropdownRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         function handleOutside(e: MouseEvent) {
-            if (profileDropdownRef.current && !profileDropdownRef.current.contains(e.target as Node)) {
-                setIsProfileDropdownOpen(false);
-            }
             if (saveDropdownRef.current && !saveDropdownRef.current.contains(e.target as Node)) {
                 setIsSavesDropdownOpen(false);
             }
@@ -313,86 +308,20 @@ export function SaveManagerView() {
                 >
                     {/* Left side: Profile */}
                     <div className="flex items-center gap-2">
-                        <div ref={profileDropdownRef} className="relative">
-                            <button
-                                onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-                                className="flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-lg text-sm bg-black/20 border outline-none focus:border-accent transition-all cursor-pointer hover:bg-black/30 max-w-[320px]"
-                                style={{
-                                    color: 'var(--text-primary)',
-                                    borderColor: 'var(--border-subtle)',
-                                }}
-                            >
-                                <HardDrive size={14} className="text-accent shrink-0" />
-                                <span className="truncate">
-                                    {profiles.find(p => p.id === activeProfileId)?.name || "Active Profile..."}
-                                </span>
-                                <ChevronDown size={14} className="shrink-0 opacity-30" />
-                            </button>
-
-                            <AnimatePresence>
-                                {isProfileDropdownOpen && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 5 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: 5 }}
-                                        transition={{ duration: 0.15 }}
-                                        className="absolute left-0 top-full mt-2 rounded-xl shadow-2xl overflow-hidden z-[100] min-w-[280px]"
-                                        style={{
-                                            backgroundColor: 'var(--bg-main)',
-                                            border: '1px solid var(--border-subtle)',
-                                        }}
-                                    >
-                                        <div className="p-1.5">
-                                            <p
-                                                className="px-3 py-1.5 text-2xs font-semibold uppercase tracking-wider"
-                                                style={{ color: 'var(--text-secondary)' }}
-                                            >
-                                                Profiles
-                                            </p>
-                                            <div className="max-h-[320px] overflow-auto custom-scrollbar">
-                                                {profiles.map(p => (
-                                                    <button
-                                                        key={p.id}
-                                                        onClick={() => {
-                                                            setActiveProfileId(p.id);
-                                                            localStorage.setItem("active_save_profile", p.id);
-                                                            setIsProfileDropdownOpen(false);
-                                                        }}
-                                                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 ${p.id === activeProfileId
-                                                            ? 'bg-accent/10'
-                                                            : 'hover:bg-zinc-500/10'
-                                                            }`}
-                                                    >
-                                                        <User
-                                                            size={15}
-                                                            className="shrink-0"
-                                                            style={{ color: p.id === activeProfileId ? 'var(--accent)' : 'var(--text-secondary)' }}
-                                                        />
-                                                        <div className="flex flex-col flex-1 min-w-0">
-                                                            <span
-                                                                className="text-sm font-medium truncate"
-                                                                style={{ color: p.id === activeProfileId ? 'var(--accent)' : 'var(--text-primary)' }}
-                                                            >
-                                                                {p.name}
-                                                            </span>
-                                                            <span
-                                                                className="text-micro truncate"
-                                                                style={{ color: 'var(--text-secondary)' }}
-                                                            >
-                                                                {p.id}
-                                                            </span>
-                                                        </div>
-                                                        {p.id === activeProfileId && (
-                                                            <Check size={14} className="text-accent" />
-                                                        )}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
+                        <RichDropdown
+                            value={activeProfileId}
+                            options={profiles.map((profile) => ({
+                                id: profile.id,
+                                label: profile.name,
+                                description: profile.id,
+                            }))}
+                            onChange={(profileId) => {
+                                setActiveProfileId(profileId);
+                                localStorage.setItem("active_save_profile", profileId);
+                            }}
+                            placeholder="Active Profile..."
+                            icon={<User size={14} className="shrink-0 text-accent" />}
+                        />
                     </div>
 
                     <VSep />
