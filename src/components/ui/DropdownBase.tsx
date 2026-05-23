@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import type { ReactNode } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Check, ChevronDown } from "lucide-react";
+
+type RichDropdownOption = { id: string; label: string; description?: string; };
+interface RichDropdownProps { value: string; options: RichDropdownOption[]; onChange: (value: string) => void; placeholder: string; icon?: ReactNode; triggerMaxWidth?: string; menuMinWidth?: string; menuListMinWidth?: string; menuMaxWidth?: string; menuMaxHeight?: string; }
 
 interface SelectDropdownProps {
   value: string;
@@ -87,6 +92,114 @@ export function SelectDropdown({ value, options, onChange }: SelectDropdownProps
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+export function RichDropdown({
+  value,
+  options,
+  onChange,
+  placeholder,
+  icon,
+  triggerMaxWidth = "320px",
+  menuMinWidth = "200px",
+  menuListMinWidth = "180px",
+  menuMaxWidth = "320px",
+  menuMaxHeight = "320px",
+}: RichDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const selectedOption = options.find((option) => option.id === value);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!dropdownRef.current?.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen]);
+
+  const handleSelect = (optionId: string) => {
+    onChange(optionId);
+    setIsOpen(false);
+  };
+
+  return (
+    <div ref={dropdownRef} className="relative inline-block w-full" style={{ maxWidth: triggerMaxWidth }}>
+      <button
+        type="button"
+        onClick={() => setIsOpen((open) => !open)}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        className="flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-lg text-sm bg-black/20 border outline-none focus:border-accent transition-all cursor-pointer hover:bg-black/30"
+        style={{ borderColor: "var(--border-subtle)", color: "var(--text-primary)" }}
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          {icon && <span className="shrink-0" style={{ color: "var(--text-secondary)" }}>{icon}</span>}
+          <span className={`truncate ${selectedOption ? "" : "text-white/45"}`}>{selectedOption?.label ?? placeholder}</span>
+        </span>
+        <ChevronDown
+          size={14}
+          className={`shrink-0 opacity-70 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+          style={{ color: "var(--text-secondary)" }}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: 0.12, ease: "easeOut" }}
+            role="listbox"
+            className="absolute left-0 top-full z-50 mt-2 overflow-hidden rounded-xl border bg-[#1e1e1e] p-1.5 shadow-[0_16px_36px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.05)]"
+            style={{ minWidth: menuMinWidth, maxWidth: menuMaxWidth, borderColor: "rgba(255, 255, 255, 0.08)" }}
+          >
+            <div className="custom-scrollbar space-y-1 overflow-y-auto" style={{ minWidth: menuListMinWidth, maxHeight: menuMaxHeight }}>
+              {options.map((option) => {
+                const isSelected = option.id === value;
+
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => handleSelect(option.id)}
+                    className={`flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-zinc-500/10 ${isSelected ? "bg-zinc-500/10 text-white" : "text-white"}`}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">{option.label}</span>
+                      {option.description && (
+                        <span className="mt-0.5 block text-xs leading-snug text-white/45">{option.description}</span>
+                      )}
+                    </span>
+                    {isSelected && <Check size={14} className="mt-0.5 shrink-0 text-[#e7dddd]" />}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
