@@ -3,7 +3,7 @@ import { Sparkles, Paintbrush, Palette, Globe, Maximize, Save, HardDrive, Folder
 import { invoke } from "@tauri-apps/api/core";
 import { ColorPicker } from "../../components/ui/ColorPicker";
 import { ToggleSwitch } from "../../components/ui/ToggleButton";
-import { SelectDropdown } from "../../components/ui/DropdownButton";
+import { SelectDropdown } from "../../components/ui/DropdownBase";
 
 interface SettingsViewProps {
   currentTheme: string;
