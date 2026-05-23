@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Effect, getCurrentWindow } from "@tauri-apps/api/window";
+import { invoke } from "@tauri-apps/api/core";
 import { Sidebar } from "./components/layout/SideBar";
 import { Titlebar } from "./components/layout/TittleBar";
 import { DecryptorView } from "./pages/quicksave/SIIDecryptor";
@@ -41,12 +41,7 @@ export default function App() {
     localStorage.setItem("translucent_effect", translucentEffect ? "true" : "false");
     document.documentElement.classList.toggle("translucent-effect", translucentEffect);
 
-    const appWindow = getCurrentWindow();
-    if (translucentEffect) {
-      appWindow.setEffects({ effects: [Effect.Mica] }).catch(console.error);
-    } else {
-      appWindow.clearEffects().catch(console.error);
-    }
+    invoke(translucentEffect ? "apply_window_mica" : "clear_window_mica").catch(console.error);
   }, [translucentEffect]);
 
   // Handle window resize for responsiveness
