@@ -1,4 +1,5 @@
-import { ArrowLeft, HardDrive, Plus, RefreshCw, Save as SaveIcon, User } from "lucide-react";
+import { ArrowLeft, HardDrive, Plus, Save as SaveIcon, User } from "lucide-react";
+import { ToolbarButton, ToolbarSummary, ToolbarReloadButton } from "./ButtonBase";
 import { RichDropdown } from "./DropdownBase";
 import { SegmentedControl } from "./SegmentedControl";
 
@@ -17,15 +18,6 @@ type ToolbarSave = {
 type ToolbarTab = {
     id: string;
     label: string;
-};
-
-type ActionBtnProps = {
-    icon: React.ElementType;
-    label?: string;
-    primary?: boolean;
-    disabled?: boolean;
-    tooltip?: string;
-    onClick?: () => void;
 };
 
 type SaveManagerToolbarProps = {
@@ -53,55 +45,6 @@ type SaveEditToolbarProps = {
     onBack: () => void;
 };
 
-function ActionBtn({
-    icon: Icon,
-    label,
-    primary = false,
-    disabled = false,
-    tooltip,
-    onClick,
-}: ActionBtnProps) {
-    return (
-        <button
-            disabled={disabled}
-            onClick={onClick}
-            title={tooltip}
-            className={`inline-flex items-center gap-2 px-2 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 select-none
-        ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer hover:bg-zinc-500/10"}
-        ${primary ? "bg-accent text-black hover:bg-accent-hover" : ""}`}
-            style={primary ? {} : { color: "var(--text-primary)" }}
-        >
-            <Icon size={14} strokeWidth={2} />
-            {label}
-        </button>
-    );
-}
-
-function BackButton({ onClick }: { onClick: () => void }) {
-    return (
-        <button
-            onClick={onClick}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg transition-colors duration-200 hover:bg-zinc-500/15"
-            style={{ color: "var(--text-primary)" }}
-            title="Back"
-        >
-            <ArrowLeft size={15} strokeWidth={2} />
-        </button>
-    );
-}
-
-function ToolbarSummary({ icon: Icon, text }: { icon: React.ElementType; text: string }) {
-    return (
-        <div
-            className="flex max-w-[320px] items-center gap-2 rounded-lg border bg-black/20 px-3 py-1.5 text-sm"
-            style={{ color: "var(--text-primary)", borderColor: "var(--border-subtle)" }}
-        >
-            <Icon size={14} className="shrink-0 opacity-60" />
-            <span className="truncate">{text}</span>
-        </div>
-    );
-}
-
 function VSep() {
     return (
         <div
@@ -127,7 +70,7 @@ export function SaveEditToolbar({
             style={{ backgroundColor: "rgb(var(--panel-dark))", border: "1px solid var(--border-subtle)" }}
         >
             <div className="flex items-center gap-2">
-                <BackButton onClick={onBack} />
+                <ToolbarButton icon={ArrowLeft} size="square" tooltip="Back" onClick={onBack} />
                 <ToolbarSummary icon={HardDrive} text={activeProfileName} />
                 <ToolbarSummary icon={SaveIcon} text={activeSaveName} />
             </div>
@@ -139,21 +82,15 @@ export function SaveEditToolbar({
             <VSep />
 
             <div className="flex items-center gap-2">
-                <button
-                    onClick={onAdd}
-                    className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-red-400"
-                    style={{ backgroundColor: "#e05252" }}
-                >
-                    <Plus size={14} strokeWidth={2} /> Add
-                </button>
-                <ActionBtn
+                <ToolbarButton icon={Plus} label="Add" variant="danger" onClick={onAdd} />
+                <ToolbarButton
                     icon={SaveIcon}
                     label="Save"
                     disabled={!canSave}
                     onClick={onSave}
                 />
                 <VSep />
-                <ActionBtn icon={RefreshCw} disabled={isReloading} onClick={onRefresh} />
+                <ToolbarReloadButton isReloading={isReloading} onClick={onRefresh} />
             </div>
         </div>
     );
@@ -224,12 +161,11 @@ export function SaveManagerToolbar({
                     menuMaxHeight="300px"
                 />
 
-                <div className="w-px h-6 mx-1" style={{ backgroundColor: "var(--border-subtle)" }} />
-                <ActionBtn
-                    icon={RefreshCw}
-                    tooltip="Reload profiles and saves"
+                <VSep />
+                <ToolbarReloadButton
+                    isReloading={isReloading}
                     onClick={onRefresh}
-                    disabled={isReloading}
+                    tooltip="Reload profiles and saves"
                 />
             </div>
         </div>
