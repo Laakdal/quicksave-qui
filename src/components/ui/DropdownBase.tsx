@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, ChevronDown } from "lucide-react";
+import { ToolbarDropdownTrigger } from "./ButtonBase";
 
 type RichDropdownOption = { id: string; label: string; description?: string; };
 interface RichDropdownProps { value: string; options: RichDropdownOption[]; onChange: (value: string) => void; placeholder: string; icon?: ReactNode; triggerMaxWidth?: string; menuMinWidth?: string; menuListMinWidth?: string; menuMaxWidth?: string; menuMaxHeight?: string; }
@@ -143,24 +144,14 @@ export function RichDropdown({
 
   return (
     <div ref={dropdownRef} className="relative inline-block w-full" style={{ maxWidth: triggerMaxWidth }}>
-      <button
-        type="button"
+      <ToolbarDropdownTrigger
+        icon={icon}
+        label={selectedOption?.label}
+        isOpen={isOpen}
         onClick={() => setIsOpen((open) => !open)}
-        aria-haspopup="listbox"
-        aria-expanded={isOpen}
-        className="flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-lg text-sm bg-black/20 border outline-none focus:border-accent transition-all cursor-pointer hover:bg-black/30"
-        style={{ borderColor: "var(--border-subtle)", color: "var(--text-primary)" }}
-      >
-        <span className="flex min-w-0 items-center gap-2">
-          {icon && <span className="shrink-0" style={{ color: "var(--text-secondary)" }}>{icon}</span>}
-          <span className={`truncate ${selectedOption ? "" : "text-white/45"}`}>{selectedOption?.label ?? placeholder}</span>
-        </span>
-        <ChevronDown
-          size={14}
-          className={`shrink-0 opacity-70 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-          style={{ color: "var(--text-secondary)" }}
-        />
-      </button>
+        placeholder={placeholder}
+        maxWidth={triggerMaxWidth}
+      />
 
       <AnimatePresence>
         {isOpen && (
