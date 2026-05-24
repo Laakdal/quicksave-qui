@@ -299,9 +299,9 @@ export function SaveManagerView() {
                                                 <button
                                                     disabled={truck.active || !activeSaveGamePath}
                                                     onClick={() => handleActivateTruck(truck.id)}
-                                                    className={`inline-flex h-8 w-8 items-center justify-center rounded-lg  transition-all ${truck.active ? "cursor-not-allowed opacity-45" : "hover:bg-zinc-500/10"}`}
+                                                    className={`inline-flex h-8 w-8 items-center justify-center rounded-lg  transition-all ${truck.active ? "text-emerald-400" : "hover:bg-zinc-500/10"}`}
                                                     style={{
-                                                        color: truck.active ? "var(--text-secondary)" : "var(--accent)",
+                                                        color: truck.active ? undefined : "var(--accent)",
                                                         borderColor: "var(--border-subtle)",
                                                     }}
                                                     title={truck.active ? "Current active truck" : "Activate truck"}
