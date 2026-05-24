@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ArrowLeft, Check, ChevronDown, Clipboard, Code2, HardDrive, Lock, MoreVertical, Plus, RefreshCw, RotateCcw, Save as SaveIcon, Search, Trash2, Unlock, X } from "lucide-react";
+import { Check, ChevronDown, Clipboard, Code2, Lock, MoreVertical, RotateCcw, Search, Trash2, Unlock, X } from "lucide-react";
 import { PopupCodeSEAction } from "../../components/ui/PopupCodeSEAction";
 import { SegmentedControl } from "../../components/ui/SegmentedControl";
+import { SaveEditToolbar } from "../../components/ui/Toolbar";
 
 type TruckAccessory = {
     id: string;
@@ -58,56 +59,13 @@ interface SaveEditActionProps {
     onBack: () => void;
 }
 
-function ToolbarButton({ icon: Icon, label, disabled = false, onClick }: { icon: React.ElementType; label?: string; disabled?: boolean; onClick?: () => void }) {
-    return (
-        <button
-            disabled={disabled}
-            onClick={onClick}
-            className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors duration-200 ${disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer hover:bg-zinc-500/10"}`}
-            style={{ color: "var(--text-primary)", backgroundColor: "rgba(var(--zinc-700), 0.5)" }}
-        >
-            <Icon size={14} strokeWidth={2} />
-            {label}
-        </button>
-    );
-}
-
-function BackButton({ onClick }: { onClick: () => void }) {
-    return (
-        <button
-            onClick={onClick}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg transition-colors duration-200 hover:bg-zinc-500/15"
-            style={{ color: "var(--text-primary)" }}
-            title="Back"
-        >
-            <ArrowLeft size={15} strokeWidth={2} />
-        </button>
-    );
-}
-
-function ToolbarSummary({ icon: Icon, text }: { icon: React.ElementType; text: string }) {
-    return (
-        <div
-            className="flex max-w-[320px] items-center gap-2 rounded-lg border bg-black/20 px-3 py-1.5 text-sm"
-            style={{ color: "var(--text-primary)", borderColor: "var(--border-subtle)" }}
-        >
-            <Icon size={14} className="shrink-0 opacity-60" />
-            <span className="truncate">{text}</span>
-        </div>
-    );
-}
-
-function VSep() {
-    return <div className="mx-1 h-7 w-px shrink-0" style={{ backgroundColor: "var(--border-subtle)" }} />;
-}
-
 function TableActionButton({ icon: Icon, label, tone = "accent", onClick }: { icon: React.ElementType; label: string; tone?: "accent" | "danger" | "primary"; onClick: (event: React.MouseEvent<HTMLButtonElement>) => void }) {
     const color = tone === "danger" ? "#f87171" : tone === "accent" ? "var(--accent)" : "var(--text-primary)";
 
     return (
         <button
             onClick={onClick}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border transition-all hover:-translate-y-0.5 hover:bg-zinc-500/10"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition-all hover:bg-zinc-500/10"
             style={{ color, borderColor: "var(--border-subtle)" }}
             title={label}
         >
@@ -498,40 +456,16 @@ export function SaveEditAction({ truck, activeProfileName, activeSaveName, isRel
     return (
         <div className="h-full w-full overflow-y-auto p-9">
             <div className="mx-auto max-w-[1070px]">
-                <div
-                    className="mb-6 flex flex-wrap items-center rounded-xl p-3"
-                    style={{ backgroundColor: "rgb(var(--panel-dark))", border: "1px solid var(--border-subtle)" }}
-                >
-                    <div className="flex items-center gap-2">
-                        <BackButton onClick={handleBack} />
-                        <ToolbarSummary icon={HardDrive} text={activeProfileName} />
-                        <ToolbarSummary icon={SaveIcon} text={activeSaveName} />
-                    </div>
-
-                    <VSep />
-
-                    <div className="flex-1" />
-
-                    <VSep />
-
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={openAddAccessory}
-                            className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-red-400"
-                            style={{ backgroundColor: "#e05252" }}
-                        >
-                            <Plus size={14} strokeWidth={2} /> Add
-                        </button>
-                        <ToolbarButton
-                            icon={SaveIcon}
-                            label="Save"
-                            disabled={!canSave}
-                            onClick={handleSave}
-                        />
-                        <VSep />
-                        <ToolbarButton icon={RefreshCw} disabled={isReloading} onClick={onRefresh} />
-                    </div>
-                </div>
+                <SaveEditToolbar
+                    activeProfileName={activeProfileName}
+                    activeSaveName={activeSaveName}
+                    isReloading={isReloading}
+                    canSave={canSave}
+                    onAdd={openAddAccessory}
+                    onSave={handleSave}
+                    onRefresh={onRefresh}
+                    onBack={handleBack}
+                />
 
                 <div
                     className="overflow-hidden rounded-xl"
@@ -610,27 +544,32 @@ export function SaveEditAction({ truck, activeProfileName, activeSaveName, isRel
                         </div>
                     </div>
 
-                    <div className="space-y-5">
+                    <div className="space-y-5 pb-6">
                         {Object.entries(displayGroups).map(([blockType, positionGroups]) => (
                             <section key={blockType} className="space-y-3">
                                 <div className="space-y-4">
                                     {Object.entries(positionGroups).map(([positionLabel, offsetGroups]) => (
                                         <div key={positionLabel} className="space-y-3">
                                             {positionLabel !== "All" && (
-                                                <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{positionLabel}</p>
+                                                <p className="px-6 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{positionLabel}</p>
                                             )}
                                             {Object.entries(offsetGroups).map(([offsetLabel, groupItems]) => (
                                                 <div key={offsetLabel} className="space-y-2">
                                                     {offsetLabel !== "All" && (
-                                                        <p className="text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>{offsetLabel}</p>
+                                                        <p className="px-6 text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>{offsetLabel}</p>
                                                     )}
                                                     <div className="overflow-visible">
-                                                        <table className="w-full border-collapse text-left text-sm">
+                                                        <table className="w-full table-fixed border-collapse text-left text-sm">
+                                                            <colgroup>
+                                                                <col className="w-[66%]" />
+                                                                <col className="w-[22%]" />
+                                                                <col className="w-24" />
+                                                            </colgroup>
                                                             <thead>
                                                                 <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                                                                     <th className="px-6 py-3 font-semibold" style={{ color: "var(--text-primary)" }}>Path</th>
                                                                     <th className="px-4 py-3 font-semibold" style={{ color: "var(--text-primary)" }}>ID</th>
-                                                                    <th className="w-24 px-4 py-3 text-right font-semibold" style={{ color: "var(--text-primary)" }}>Actions</th>
+                                                                    <th className="px-4 py-3 text-right font-semibold" style={{ color: "var(--text-primary)" }}>Actions</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
