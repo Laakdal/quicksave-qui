@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { CodeViewer } from "./CodeViewer";
 
 export type PopupCodeAccessory = {
     id: string;
@@ -18,6 +19,9 @@ type PopupCodeSEActionProps = {
 };
 
 export function PopupCodeSEAction({ accessory, draftBlock, blockTypeOptions, applyLabel = "Apply", onDraftBlockChange, onBlockTypeChange, onApply, onClose }: PopupCodeSEActionProps) {
+    const editorLineCount = Math.max(draftBlock.split("\n").length, 1);
+    const editorHeight = Math.min(Math.max(editorLineCount * 22 + 48, 140), 420);
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6">
             <div className="w-full max-w-3xl overflow-hidden rounded-xl border" style={{ backgroundColor: "rgb(var(--panel-dark))", borderColor: "var(--border-subtle)" }}>
@@ -44,15 +48,12 @@ export function PopupCodeSEAction({ accessory, draftBlock, blockTypeOptions, app
                         <X size={16} />
                     </button>
                 </div>
-                <div className="p-5">
-                    <textarea
+                <div className="flex flex-col p-5">
+                    <CodeViewer
                         value={draftBlock}
-                        onChange={(event) => onDraftBlockChange(event.target.value)}
-                        spellCheck={false}
-                        autoCorrect="off"
-                        autoCapitalize="off"
-                        className="h-72 w-full resize-none rounded-lg border bg-black/30 p-4 font-mono text-code outline-none focus:border-accent"
-                        style={{ color: "#86efac", borderColor: "var(--border-subtle)" }}
+                        onChange={onDraftBlockChange}
+                        language="ini"
+                        height={editorHeight}
                     />
                 </div>
                 <div className="flex justify-end gap-2 border-t py-3 px-5" style={{ borderColor: "var(--border-subtle)" }}>
