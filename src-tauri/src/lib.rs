@@ -1,3 +1,4 @@
+pub mod hex;
 pub mod save_manager;
 pub mod shared;
 pub mod sii;
@@ -95,7 +96,12 @@ pub fn run() {
             shared::win_dialog::pick_file,
             shared::win_dialog::save_file_dialog,
             save_manager::owned_truck::get_player_vehicles,
+            save_manager::owned_trailer::get_player_trailers,
             save_manager::owned_truck::save_active_truck,
+            save_manager::owned_trailer::save_active_trailer,
+            save_manager::owned_vehicle_stuff::repair_owned_vehicle,
+            save_manager::owned_vehicle_stuff::refueling_truck,
+            save_manager::owned_vehicle_stuff::save_vehicle_license_plate,
             save_manager::owned_truck::save_truck_accessories,
             save_manager::vault::list_locked_blocks,
             save_manager::vault::lock_block,
