@@ -15,7 +15,7 @@
 //!
 //! ```rust,no_run
 //! let raw = std::fs::read("game.sii").unwrap();
-//! let decoded = sii::process(&raw).unwrap();
+//! let decoded = project_quicksave_gui_lib::sii::process(&raw).unwrap();
 //! std::fs::write("game.decrypted.sii", &decoded).unwrap();
 //! ```
 
