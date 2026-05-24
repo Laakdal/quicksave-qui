@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { UploadCloud, FileJson, Download, ToggleLeft, ToggleRight, History, Trash2, Clock, X, Folder, Save, AlertTriangle, Check, Zap } from "lucide-react";
-import Editor from "@monaco-editor/react";
+import { UploadCloud, FileJson, Download, History, Trash2, Clock, X, Folder, Save, AlertTriangle, Check, Zap } from "lucide-react";
+import { CodeViewer } from "../../components/ui/CodeViewer";
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
@@ -13,6 +13,18 @@ interface HistoryItem {
   timestamp: number;
 }
 
+interface DecryptorConfig {
+  instant_mode: boolean;
+  history: HistoryItem[];
+}
+
+interface DecryptResult {
+  decrypted_text: string | null;
+  file_name: string;
+  file_path: string;
+  is_instant: boolean;
+}
+
 /* ── DecryptorView ─────────────────────────────────────────────── */
 
 export function DecryptorView() {
@@ -21,11 +33,10 @@ export function DecryptorView() {
   const [decryptedText, setDecryptedText] = useState("");
   const [fileName, setFileName] = useState("");
   const [currentFilePath, setCurrentFilePath] = useState("");
-  const [useMonaco, setUseMonaco] = useState(true);
   const [history, setHistory] = useState<HistoryItem[]>([]);
 
   // Settings / Modes
-  const [isInstantMode, setIsInstantMode] = useState(() => localStorage.getItem("instant_decrypt_mode") === "true");
+  const [isInstantMode, setIsInstantMode] = useState(false);
   const [isHoveringInstant, setIsHoveringInstant] = useState(false);
 
   // Use a ref for instant mode to avoid stale closures in the event listener
@@ -40,17 +51,29 @@ export function DecryptorView() {
   const [lastSavedPath, setLastSavedPath] = useState("");
   const [dontShowAgain, setDontShowAgain] = useState(false);
 
-  // ── Load History ──
+  // ── Load Decryptor Config from Rust Backend ──
   useEffect(() => {
-    const saved = localStorage.getItem("decrypt_history");
-    if (saved) {
+    const loadConfig = async () => {
       try {
-        setHistory(JSON.parse(saved));
+        const config = await invoke<DecryptorConfig>("get_decryptor_config");
+        setIsInstantMode(config.instant_mode);
+        setHistory(config.history);
       } catch (e) {
-        console.error("Failed to parse history", e);
+        console.error("Failed to load decryptor config from Rust backend:", e);
       }
-    }
+    };
+    loadConfig();
   }, []);
+
+  const refreshConfig = async () => {
+    try {
+      const config = await invoke<DecryptorConfig>("get_decryptor_config");
+      setIsInstantMode(config.instant_mode);
+      setHistory(config.history);
+    } catch (e) {
+      console.error("Failed to refresh decryptor config:", e);
+    }
+  };
 
   // ── Tauri native file-drop listener ──
   useEffect(() => {
@@ -73,38 +96,23 @@ export function DecryptorView() {
     return () => { unlisten.then(f => f()); };
   }, []);
 
-  const addToHistory = (name: string, path: string) => {
-    const existingIndex = history.findIndex(item => item.path === path);
-    let newHistory = [...history];
-
-    if (existingIndex !== -1) {
-      const item = { ...newHistory[existingIndex], timestamp: Date.now() };
-      newHistory.splice(existingIndex, 1);
-      newHistory = [item, ...newHistory];
-    } else {
-      const newItem: HistoryItem = {
-        id: Date.now().toString(),
-        name,
-        path,
-        timestamp: Date.now()
-      };
-      newHistory = [newItem, ...newHistory].slice(0, 10);
-    }
-
-    setHistory(newHistory);
-    localStorage.setItem("decrypt_history", JSON.stringify(newHistory));
-  };
-
-  const clearHistory = () => {
+  const clearHistory = async () => {
     setHistory([]);
-    localStorage.removeItem("decrypt_history");
+    try {
+      await invoke("clear_decryptor_history");
+    } catch (e) {
+      console.error("Failed to clear decryptor history:", e);
+    }
   };
 
-  const removeHistoryItem = (e: React.MouseEvent, id: string) => {
+  const removeHistoryItem = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    const newHistory = history.filter(item => item.id !== id);
-    setHistory(newHistory);
-    localStorage.setItem("decrypt_history", JSON.stringify(newHistory));
+    setHistory((prev) => prev.filter(item => item.id !== id));
+    try {
+      await invoke("remove_decryptor_history_item", { id });
+    } catch (e) {
+      console.error("Failed to remove decryptor history item:", e);
+    }
   };
 
   const handleFilePath = async (path: string) => {
@@ -120,22 +128,22 @@ export function DecryptorView() {
     setDecryptedText("");
 
     try {
-      const result = await invoke<string>("decode_sii_path", { path });
+      const result = await invoke<DecryptResult>("decrypt_sii_file", { 
+        path, 
+        instantMode: instantModeRef.current 
+      });
 
-      if (instantModeRef.current) {
-        // Direct overwrite in instant mode using the ref value
-        await invoke("write_file", { path, contents: result });
+      if (result.is_instant) {
         setLastSavedPath(path);
         setShowSuccessModal(true);
-        addToHistory(name, path);
         setIsLoading(false);
       } else {
-        setDecryptedText(result);
-        addToHistory(name, path);
+        setDecryptedText(result.decrypted_text ?? "");
         setIsLoading(false);
       }
-    } catch {
-      alert(`Could not read file at: ${path}`);
+      await refreshConfig();
+    } catch (err) {
+      alert(`Could not decrypt file: ${err}`);
       setIsLoading(false);
     }
   };
@@ -206,10 +214,19 @@ export function DecryptorView() {
     }
   }, [showSuccessModal]);
 
-  const toggleInstantMode = () => {
-    const next = !isInstantMode;
-    setIsInstantMode(next);
-    localStorage.setItem("instant_decrypt_mode", next ? "true" : "false");
+  const toggleInstantMode = async () => {
+    const nextMode = !isInstantMode;
+    setIsInstantMode(nextMode);
+    try {
+      await invoke("save_decryptor_config", {
+        config: {
+          instant_mode: nextMode,
+          history: history,
+        }
+      });
+    } catch (e) {
+      console.error("Failed to save instant mode to Rust backend:", e);
+    }
   };
 
   // ── Render states ────────────────────────────────────────────────────────
@@ -272,13 +289,6 @@ export function DecryptorView() {
           </div>
           <div className="flex gap-2 items-center shrink-0">
             <button
-              onClick={() => setUseMonaco(!useMonaco)}
-              className="flex items-center gap-2 px-3 py-1.5 mr-2 rounded-md text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 transition-colors"
-            >
-              {useMonaco ? <ToggleRight size={18} className="text-accent" /> : <ToggleLeft size={18} />}
-              VS Code Mode
-            </button>
-            <button
               onClick={() => { setDecryptedText(""); }}
               className="px-3 py-1.5 text-xs rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 transition-colors"
             >
@@ -299,35 +309,7 @@ export function DecryptorView() {
           </div>
         </div>
 
-        {useMonaco ? (
-          <div className="flex-1 rounded-lg border border-zinc-800 overflow-hidden relative">
-            <Editor
-              height="100%"
-              defaultLanguage="ini"
-              theme="vs-dark"
-              value={decryptedText}
-              onChange={(value) => setDecryptedText(value || "")}
-              options={{
-                readOnly: false,
-                minimap: { enabled: true },
-                scrollBeyondLastLine: false,
-                fontSize: 13,
-                wordWrap: "off",
-                padding: { top: 16 },
-                hover: { enabled: false },
-              }}
-              loading={<div className="flex justify-center pt-10 text-zinc-500">Loading editor...</div>}
-            />
-          </div>
-        ) : (
-          <div className="flex-1 bg-panel-darker rounded-lg border border-zinc-800 overflow-hidden relative">
-            <div className="absolute inset-0 overflow-auto">
-              <pre className="p-5 text-code leading-relaxed text-zinc-300 font-mono">
-                <code>{decryptedText}</code>
-              </pre>
-            </div>
-          </div>
-        )}
+        <CodeViewer value={decryptedText} onChange={setDecryptedText} />
       </div>
     );
   }
@@ -407,7 +389,7 @@ export function DecryptorView() {
         </div>
       </div>
 
-      {history.length > 0 && (
+      {history && history.length > 0 && (
         <div className="w-full max-w-2xl mt-2">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-lg font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
