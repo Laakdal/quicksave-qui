@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import { CodeViewer } from "./CodeViewer";
+import { RichDropdown } from "./DropdownBase";
 
 export type PopupCodeAccessory = {
     id: string;
@@ -28,16 +29,17 @@ export function PopupCodeSEAction({ accessory, draftBlock, blockTypeOptions, app
                 <div className="flex items-start justify-between gap-4 border-b p-5" style={{ borderColor: "var(--border-subtle)" }}>
                     <div className="min-w-0">
                         {blockTypeOptions && onBlockTypeChange ? (
-                            <select
+                            <RichDropdown
                                 value={accessory.block_type}
-                                onChange={(event) => onBlockTypeChange(event.target.value)}
-                                className="rounded-lg border bg-black/30 px-3 py-2 font-mono text-xs font-semibold uppercase outline-none focus:border-accent"
-                                style={{ color: "var(--text-primary)", borderColor: "var(--border-subtle)" }}
-                            >
-                                {blockTypeOptions.map((blockType) => (
-                                    <option key={blockType} value={blockType}>{blockType}</option>
-                                ))}
-                            </select>
+                                options={blockTypeOptions.map((blockType) => ({ id: blockType, label: blockType }))}
+                                onChange={onBlockTypeChange}
+                                placeholder="Select block type..."
+                                triggerMaxWidth="320px"
+                                menuMinWidth="320px"
+                                menuListMinWidth="280px"
+                                menuMaxWidth="380px"
+                                menuMaxHeight="260px"
+                            />
                         ) : (
                             <p className="font-mono text-sm font-semibold uppercase" style={{ color: "var(--text-primary)" }}>{accessory.block_type}</p>
                         )}
