@@ -4,20 +4,23 @@ type CodeViewerProps = {
     value: string;
     onChange: (value: string) => void;
     language?: string;
+    height?: string | number;
+    className?: string;
+    minimap?: boolean;
 };
 
-export function CodeViewer({ value, onChange, language = "ini" }: CodeViewerProps) {
+export function CodeViewer({ value, onChange, language = "ini", height = "100%", className = "", minimap = false }: CodeViewerProps) {
     return (
-        <div className="relative flex-1 overflow-hidden rounded-lg border border-zinc-800 text-sm">
+        <div className={`relative w-full overflow-hidden rounded-lg border border-zinc-800 text-sm ${className}`}>
             <Editor
-                height="100%"
+                height={height}
                 defaultLanguage={language}
                 theme="vs-dark"
                 value={value}
                 onChange={(nextValue) => onChange(nextValue || "")}
                 options={{
                     readOnly: false,
-                    minimap: { enabled: true },
+                    minimap: { enabled: minimap },
                     scrollBeyondLastLine: false,
                     fontSize: 14,
                     wordWrap: "off",
