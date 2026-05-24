@@ -48,6 +48,9 @@ export function PopupCodeSEAction({ accessory, draftBlock, blockTypeOptions, app
                     <textarea
                         value={draftBlock}
                         onChange={(event) => onDraftBlockChange(event.target.value)}
+                        spellCheck={false}
+                        autoCorrect="off"
+                        autoCapitalize="off"
                         className="h-72 w-full resize-none rounded-lg border bg-black/30 p-4 font-mono text-code outline-none focus:border-accent"
                         style={{ color: "#86efac", borderColor: "var(--border-subtle)" }}
                     />
