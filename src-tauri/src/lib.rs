@@ -99,7 +99,12 @@ pub fn run() {
             save_manager::owned_truck::save_truck_accessories,
             save_manager::vault::list_locked_blocks,
             save_manager::vault::lock_block,
-            save_manager::vault::unlock_block
+            save_manager::vault::unlock_block,
+            shared::sii_decryptor::get_decryptor_config,
+            shared::sii_decryptor::save_decryptor_config,
+            shared::sii_decryptor::decrypt_sii_file,
+            shared::sii_decryptor::clear_decryptor_history,
+            shared::sii_decryptor::remove_decryptor_history_item
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
