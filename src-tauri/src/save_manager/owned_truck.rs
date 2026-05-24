@@ -19,6 +19,9 @@ pub struct TruckDetail {
     pub brand_id: String,
     pub display_name: String,
     pub license_plate: String,
+    pub license_plate_line: String,
+    pub fuel_percent: Option<u8>,
+    pub damage_percent: Option<u8>,
     pub accessories: Vec<TruckAccessoryDetail>,
     pub accessories_count: usize,
     pub garage: String,
@@ -88,6 +91,47 @@ fn extract_field_value(line: &str) -> Option<String> {
 fn extract_raw_field_value(line: &str) -> Option<String> {
     let idx = line.find(':')?;
     Some(line[idx + 1..].trim().to_string())
+}
+
+fn parse_hex_float_percent(line: &str) -> Option<u8> {
+    let value = extract_raw_field_value(line)?.trim_start_matches('&').to_string();
+    let fraction = crate::hex::decode_f32_hex(&value).ok()?;
+    Some((fraction.clamp(0.0, 1.0) * 100.0).round() as u8)
+}
+
+fn parse_damage_percent(lines: &[String]) -> Option<u8> {
+    let mut values = Vec::new();
+
+    for line in lines {
+        let key = line_key(line.trim());
+        if matches!(
+            key,
+            "engine_wear"
+                | "transmission_wear"
+                | "cabin_wear"
+                | "engine_wear_unfixable"
+                | "transmission_wear_unfixable"
+                | "cabin_wear_unfixable"
+                | "chassis_wear"
+                | "chassis_wear_unfixable"
+        ) || key.starts_with("wheels_wear[")
+            || key.starts_with("wheels_wear_unfixable[")
+        {
+            if let Some(value) = parse_hex_float_percent(line) {
+                values.push(value);
+            }
+        }
+    }
+
+    if values.is_empty() {
+        None
+    } else {
+        Some((values.iter().map(|value| *value as usize).sum::<usize>() / values.len()) as u8)
+    }
+}
+
+fn line_key(trimmed: &str) -> &str {
+    trimmed.split(':').next().unwrap_or(trimmed).trim()
 }
 
 fn parse_wheel_offset(block_type: &str, lines: &[String]) -> Option<i32> {
@@ -259,8 +303,11 @@ pub fn get_player_vehicles(path: String) -> Result<PlayerVehicles, String> {
 
             for line in t_lines {
                 if line.starts_with("license_plate:") {
+                    detail.license_plate_line = line.clone();
                     let plate_raw = line[line.find(':').unwrap() + 1..].trim().replace("\"", "");
                     detail.license_plate = clean_license_plate(&plate_raw);
+                } else if line.starts_with("fuel_relative:") {
+                    detail.fuel_percent = parse_hex_float_percent(line);
                 } else if line.starts_with("accessories[") {
                     if let Some(idx) = line.find(':') {
                         accessory_ids.push(line[idx + 1..].trim().to_string());
@@ -306,6 +353,7 @@ pub fn get_player_vehicles(path: String) -> Result<PlayerVehicles, String> {
                 }
             }
 
+            detail.damage_percent = parse_damage_percent(t_lines);
             detail.accessories_count = detail.accessories.len();
 
             if detail.display_name.is_empty() {
