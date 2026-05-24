@@ -3,7 +3,10 @@ import { invoke } from "@tauri-apps/api/core";
 import { Check, ChevronDown, Clipboard, Code2, Lock, MoreVertical, RotateCcw, Search, Trash2, Unlock, X } from "lucide-react";
 import { PopupCodeSEAction } from "../../components/ui/PopupCodeSEAction";
 import { SegmentedControl } from "../../components/ui/SegmentedControl";
+import { ToolbarButton } from "../../components/ui/ButtonBase";
 import { SaveEditToolbar } from "../../components/ui/Toolbar";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../../components/ui/Table";
+import { ContextMenu } from "../../components/ui/ContextMenu";
 
 type TruckAccessory = {
     id: string;
@@ -57,21 +60,6 @@ interface SaveEditActionProps {
     onSave: (changes: { id: string | null; block_type: string; lines: string[]; status: AccessoryStatus }[]) => Promise<void>;
     onRefresh: () => void;
     onBack: () => void;
-}
-
-function TableActionButton({ icon: Icon, label, tone = "accent", onClick }: { icon: React.ElementType; label: string; tone?: "accent" | "danger" | "primary"; onClick: (event: React.MouseEvent<HTMLButtonElement>) => void }) {
-    const color = tone === "danger" ? "#f87171" : tone === "accent" ? "var(--accent)" : "var(--text-primary)";
-
-    return (
-        <button
-            onClick={onClick}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition-all hover:bg-zinc-500/10"
-            style={{ color, borderColor: "var(--border-subtle)" }}
-            title={label}
-        >
-            <Icon size={15} strokeWidth={2} />
-        </button>
-    );
 }
 
 type AccessoryDisplayGroups = Record<string, Record<string, Record<string, EditableTruckAccessory[]>>>;
@@ -260,9 +248,11 @@ export function SaveEditAction({ truck, activeProfileName, activeSaveName, isRel
     const [copiedBlock, setCopiedBlock] = useState<CopiedAccessoryBlock | null>(null);
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
     const [openMenuPosition, setOpenMenuPosition] = useState<{ top: number; left: number } | null>(null);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [lockedBlocks, setLockedBlocks] = useState<LockedBlock[]>([]);
     const [isAddingAccessory, setIsAddingAccessory] = useState(false);
     const [newBlockType, setNewBlockType] = useState(ACCESSORY_BLOCK_TYPES[0]);
+    const [contextMenu, setContextMenu] = useState<{ x: number, y: number, isOpen: boolean } | null>(null);
 
     useEffect(() => {
         setAccessories(truck.accessories.map((accessory) => ({
@@ -270,12 +260,14 @@ export function SaveEditAction({ truck, activeProfileName, activeSaveName, isRel
             localId: accessory.id,
             status: "unchanged",
         })));
+        setSelectedIds(new Set());
         setEditingAccessoryId(null);
         setDraftBlock("");
         setOpenMenuId(null);
         setOpenMenuPosition(null);
         setIsAddingAccessory(false);
         setNewBlockType(ACCESSORY_BLOCK_TYPES[0]);
+        setContextMenu(null);
     }, [truck.id, truck.accessories]);
 
     useEffect(() => {
@@ -285,6 +277,42 @@ export function SaveEditAction({ truck, activeProfileName, activeSaveName, isRel
     }, [truck.id]);
 
     const filteredAccessories = useMemo(() => filterAccessoriesBySegment(accessories, accessorySegment, searchQuery), [accessories, accessorySegment, searchQuery]);
+    
+    const toggleSelection = (localId: string) => {
+        const next = new Set(selectedIds);
+        if (next.has(localId)) next.delete(localId);
+        else next.add(localId);
+        setSelectedIds(next);
+    };
+
+    const toggleAllSelection = (items: EditableTruckAccessory[]) => {
+        const allInItems = items.every(item => selectedIds.has(item.localId));
+        const next = new Set(selectedIds);
+        if (allInItems) {
+            items.forEach(item => next.delete(item.localId));
+        } else {
+            items.forEach(item => next.add(item.localId));
+        }
+        setSelectedIds(next);
+    };
+
+    const handleContextMenu = (e: React.MouseEvent, _accessory: EditableTruckAccessory) => {
+        e.preventDefault();
+        setContextMenu({ x: e.clientX, y: e.clientY, isOpen: true });
+    };
+
+    const copySelectedAccessories = async () => {
+        const selectedItems = accessories.filter(acc => selectedIds.has(acc.localId));
+        if (selectedItems.length === 0) return;
+
+        const text = selectedItems.map(renderAccessoryBlockText).join("\n\n");
+        try {
+            await navigator.clipboard?.writeText(text);
+        } catch (error) {
+            console.error("Failed to copy selected accessories:", error);
+        }
+    };
+
     const groupedAccessories = useMemo(() => groupAccessoriesForDisplay(filteredAccessories), [filteredAccessories]);
     const allAccessoryGroup = useMemo<AccessoryDisplayGroups>(() => ({ Accessories: { All: { All: filteredAccessories } } }), [filteredAccessories]);
     const displayGroups = accessorySegment === "all" || searchQuery.trim() ? allAccessoryGroup : groupedAccessories;
@@ -559,44 +587,61 @@ export function SaveEditAction({ truck, activeProfileName, activeSaveName, isRel
                                                         <p className="px-6 text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>{offsetLabel}</p>
                                                     )}
                                                     <div className="overflow-visible">
-                                                        <table className="w-full table-fixed border-collapse text-left text-sm">
+                                                        <Table className="table-fixed" showWrapper={false}>
                                                             <colgroup>
-                                                                <col className="w-[66%]" />
-                                                                <col className="w-[22%]" />
-                                                                <col className="w-24" />
+                                                                <col className="w-5" />
+                                                                <col className="w-[60%]" />
+                                                                <col className="w-[23%]" />
+                                                                <col className="w-12" />
                                                             </colgroup>
-                                                            <thead>
-                                                                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                                                                    <th className="px-6 py-3 font-semibold" style={{ color: "var(--text-primary)" }}>Path</th>
-                                                                    <th className="px-4 py-3 font-semibold" style={{ color: "var(--text-primary)" }}>ID</th>
-                                                                    <th className="px-4 py-3 text-right font-semibold" style={{ color: "var(--text-primary)" }}>Actions</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
+                                                            <TableHeader>
+                                                                <TableRow>
+                                                                    <TableHead className="px-6">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={groupItems.length > 0 && groupItems.every(item => selectedIds.has(item.localId))}
+                                                                            onChange={() => toggleAllSelection(groupItems)}
+                                                                            className="h-4 w-4 appearance-none rounded border border-zinc-500 bg-transparent checked:bg-emerald-400 checked:border-emerald-400 transition-all cursor-pointer focus:ring-0 focus:ring-offset-0"
+                                                                        />
+                                                                    </TableHead>
+                                                                    <TableHead className="px-2">Path</TableHead>
+                                                                    <TableHead>ID</TableHead>
+                                                                    <TableHead className="pr-4 text-right">Actions</TableHead>
+                                                                </TableRow>
+                                                            </TableHeader>
+                                                            <TableBody>
                                                                 {groupItems.map((accessory) => (
-                                                                    <tr
+                                                                    <TableRow
                                                                         key={accessory.localId}
-                                                                        className={`transition-colors hover:bg-zinc-500/5 ${accessory.status === "deleted" ? "opacity-50" : ""}`}
-                                                                        style={{ borderBottom: "1px solid var(--border-subtle)" }}
+                                                                        className={`${accessory.status === "deleted" ? "opacity-50" : ""} ${selectedIds.has(accessory.localId) ? "bg-emerald-500/10" : ""}`}
+                                                                        onContextMenu={(e) => handleContextMenu(e, accessory)}
                                                                     >
-                                                                        <td className="max-w-[520px] px-6 py-4">
+                                                                        <TableCell className="pl-6 pr-2">
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={selectedIds.has(accessory.localId)}
+                                                                                onChange={() => toggleSelection(accessory.localId)}
+                                                                                className="h-4 w-4 appearance-none rounded border border-zinc-500 bg-transparent checked:bg-emerald-400 checked:border-emerald-400 transition-all cursor-pointer focus:ring-0 focus:ring-offset-0"
+                                                                            />
+                                                                        </TableCell>
+                                                                        <TableCell className="max-w-[520px] px-2">
                                                                             <div className="flex items-center gap-2">
                                                                                 {lockedFingerprints.has(accessoryFingerprint(accessory.block_type, accessory.lines)) && (
                                                                                     <Lock size={13} className="shrink-0" style={{ color: "var(--accent)" }} />
                                                                                 )}
                                                                                 <p className="truncate font-mono text-xs" style={{ color: "var(--text-primary)" }}>{accessory.data_path}</p>
                                                                             </div>
-                                                                        </td>
-                                                                        <td className="max-w-[260px] px-4 py-4">
+                                                                        </TableCell>
+                                                                        <TableCell className="max-w-[260px]">
                                                                             <p className="truncate font-mono text-xs" style={{ color: "var(--text-secondary)" }}>{accessory.id}</p>
-                                                                        </td>
-                                                                        <td className="px-4 py-4">
-                                                                            <div className="flex items-center justify-end gap-2">
+                                                                        </TableCell>
+                                                                        <TableCell className="px-0 pr-4 text-right">
+                                                                            <div className="flex items-center justify-end">
                                                                                 <div className="relative">
-                                                                                    <TableActionButton
+                                                                                    <ToolbarButton
                                                                                         icon={MoreVertical}
-                                                                                        label="More"
-                                                                                        tone="primary"
+                                                                                        size="square"
+                                                                                        tooltip="More"
                                                                                         onClick={(event) => toggleAccessoryMenu(accessory.localId, event)}
                                                                                     />
                                                                                     {openMenuId === accessory.localId && (
@@ -637,11 +682,11 @@ export function SaveEditAction({ truck, activeProfileName, activeSaveName, isRel
                                                                                     )}
                                                                                 </div>
                                                                             </div>
-                                                                        </td>
-                                                                    </tr>
+                                                                        </TableCell>
+                                                                    </TableRow>
                                                                 ))}
-                                                            </tbody>
-                                                        </table>
+                                                            </TableBody>
+                                                        </Table>
                                                     </div>
                                                 </div>
                                             ))}
@@ -691,6 +736,20 @@ export function SaveEditAction({ truck, activeProfileName, activeSaveName, isRel
                     </div>
                 </div>
             )}
+
+            <ContextMenu
+                x={contextMenu?.x || 0}
+                y={contextMenu?.y || 0}
+                isOpen={!!contextMenu?.isOpen}
+                onClose={() => setContextMenu(null)}
+                actions={[
+                    {
+                        label: selectedIds.size > 1 ? `Copy Selected (${selectedIds.size})` : "Copy",
+                        icon: Clipboard,
+                        onClick: copySelectedAccessories
+                    }
+                ]}
+            />
         </div>
     );
 }
