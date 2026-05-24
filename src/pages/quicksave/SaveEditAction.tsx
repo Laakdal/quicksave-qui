@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Check, ChevronDown, Clipboard, Code2, Lock, MoreVertical, RotateCcw, Search, Trash2, Unlock, X } from "lucide-react";
+import { Check, ChevronDown, Clipboard, Code2, Fuel, Lock, MoreVertical, Pencil, RotateCcw, Search, Trash2, Unlock, Wrench, X } from "lucide-react";
 import { PopupCodeSEAction } from "../../components/ui/PopupCodeSEAction";
 import { SegmentedControl } from "../../components/ui/SegmentedControl";
 import { ToolbarButton } from "../../components/ui/ButtonBase";
@@ -46,6 +46,9 @@ type TruckRow = {
     name: string;
     brand: string;
     licensePlate: string;
+    licensePlateLine: string;
+    fuelPercent: number | null;
+    damagePercent: number | null;
     accessories: TruckAccessory[];
     accessoriesCount: number;
     garage: string;
@@ -58,6 +61,9 @@ interface SaveEditActionProps {
     isReloading: boolean;
     canSave: boolean;
     onSave: (changes: { id: string | null; block_type: string; lines: string[]; status: AccessoryStatus }[]) => Promise<void>;
+    onSaveLicensePlate: (licensePlateLine: string) => Promise<void>;
+    onRefuel?: () => Promise<void>;
+    onRepair?: () => Promise<void>;
     onRefresh: () => void;
     onBack: () => void;
 }
@@ -233,7 +239,7 @@ export function groupAccessoriesForDisplay(accessories: EditableTruckAccessory[]
 }
 
 
-export function SaveEditAction({ truck, activeProfileName, activeSaveName, isReloading, canSave, onSave, onRefresh, onBack }: SaveEditActionProps) {
+export function SaveEditAction({ truck, activeProfileName, activeSaveName, isReloading, canSave, onSave, onSaveLicensePlate, onRefuel, onRepair, onRefresh, onBack }: SaveEditActionProps) {
     const [accessories, setAccessories] = useState<EditableTruckAccessory[]>(() => truck.accessories.map((accessory) => ({
         ...accessory,
         localId: accessory.id,
@@ -241,6 +247,7 @@ export function SaveEditAction({ truck, activeProfileName, activeSaveName, isRel
     })));
     const [editingAccessoryId, setEditingAccessoryId] = useState<string | null>(null);
     const [draftBlock, setDraftBlock] = useState("");
+    const [isEditingLicensePlate, setIsEditingLicensePlate] = useState(false);
     const [showBackWarning, setShowBackWarning] = useState(false);
     const [isTruckInfoOpen, setIsTruckInfoOpen] = useState(true);
     const [accessorySegment, setAccessorySegment] = useState<AccessorySegment>("all");
@@ -316,6 +323,15 @@ export function SaveEditAction({ truck, activeProfileName, activeSaveName, isRel
     const groupedAccessories = useMemo(() => groupAccessoriesForDisplay(filteredAccessories), [filteredAccessories]);
     const allAccessoryGroup = useMemo<AccessoryDisplayGroups>(() => ({ Accessories: { All: { All: filteredAccessories } } }), [filteredAccessories]);
     const displayGroups = accessorySegment === "all" || searchQuery.trim() ? allAccessoryGroup : groupedAccessories;
+    const isTrailer = truck.brand === "Trailer";
+    const accessorySegmentItems = [
+        { id: "all", label: "All" },
+        { id: "base", label: "Base" },
+        { id: "other", label: "Accessory" },
+        { id: "wheels", label: "Wheels" },
+        { id: "paint", label: "Paint" },
+        isTrailer ? { id: "cargo", label: "Cargo" } : { id: "driver_plate", label: "Driver Plate" },
+    ];
     const editingAccessory = accessories.find((accessory) => accessory.localId === editingAccessoryId) || null;
     const hasUnsavedChanges = accessories.some((accessory) => accessory.status !== "unchanged");
     const lockedFingerprints = useMemo(() => new Set(lockedBlocks.map((block) => block.fingerprint)), [lockedBlocks]);
@@ -323,6 +339,11 @@ export function SaveEditAction({ truck, activeProfileName, activeSaveName, isRel
     const openBlockEditor = (accessory: EditableTruckAccessory) => {
         setEditingAccessoryId(accessory.localId);
         setDraftBlock(renderAccessoryBlockText(accessory));
+    };
+
+    const openLicensePlateEditor = () => {
+        setDraftBlock(truck.licensePlateLine || "license_plate: \"\"");
+        setIsEditingLicensePlate(true);
     };
 
     const parsedDraftBlock = (fallbackBlockType = newBlockType, fallbackId: string | null = null) => parseAccessoryBlockDraft(draftBlock, fallbackBlockType, fallbackId);
@@ -345,6 +366,12 @@ export function SaveEditAction({ truck, activeProfileName, activeSaveName, isRel
         const parsed = parsedDraftBlock(newBlockType);
         setAccessories((current) => [...current, makeAddedAccessory(parsed.blockType, parsed.lines, parsed.id)]);
         setIsAddingAccessory(false);
+        setDraftBlock("");
+    };
+
+    const applyLicensePlateEdit = async () => {
+        await onSaveLicensePlate(draftBlock);
+        setIsEditingLicensePlate(false);
         setDraftBlock("");
     };
 
@@ -518,8 +545,42 @@ export function SaveEditAction({ truck, activeProfileName, activeSaveName, isRel
                     {isTruckInfoOpen && (
                         <div className="grid gap-3 border-t p-6 pt-5 text-sm md:grid-cols-2" style={{ borderColor: "var(--border-subtle)" }}>
                             {/* <div style={{ color: "var(--text-secondary)" }}>Brand: <span style={{ color: "var(--text-primary)" }}>{truck.brand}</span></div> */}
-                            <div style={{ color: "var(--text-secondary)" }}>License Plate: <span style={{ color: "var(--text-primary)" }}>{truck.licensePlate}</span></div>
+                            <div className="flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                                License Plate: <span style={{ color: "var(--text-primary)" }}>{truck.licensePlate}</span>
+                                <ToolbarButton
+                                    icon={Pencil}
+                                    variant="primary"
+                                    size="table"
+                                    disabled={!canSave}
+                                    onClick={openLicensePlateEditor}
+                                    tooltip="Edit license plate"
+                                />
+                            </div>
                             <div style={{ color: "var(--text-secondary)" }}>Garage: <span style={{ color: "var(--text-primary)" }}>{truck.garage.replace("garage.", "").replace(/^\w/, (c) => c.toUpperCase())}</span></div>
+                            {!isTrailer && truck.fuelPercent !== null && (
+                                <div className="flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                                    Fuel: <span style={{ color: "var(--text-primary)" }}>{truck.fuelPercent}%</span>
+                                    <ToolbarButton
+                                        icon={Fuel}
+                                        variant="primary"
+                                        size="table"
+                                        disabled={!canSave || truck.fuelPercent >= 100 || !onRefuel}
+                                        onClick={onRefuel}
+                                        tooltip="Refuel to 100%"
+                                    />
+                                </div>
+                            )}
+                            <div className="flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                                Damage: <span style={{ color: "var(--text-primary)" }}>{truck.damagePercent ?? 0}%</span>
+                                <ToolbarButton
+                                    icon={Wrench}
+                                    variant="primary"
+                                    size="table"
+                                    disabled={!canSave || (truck.damagePercent ?? 0) === 0 || !onRepair}
+                                    onClick={onRepair}
+                                    tooltip="Repair vehicle"
+                                />
+                            </div>
                             <div style={{ color: "var(--text-secondary)" }}>Accessories: <span style={{ color: "var(--text-primary)" }}>{truck.accessoriesCount}</span></div>
                         </div>
                     )}
@@ -556,15 +617,7 @@ export function SaveEditAction({ truck, activeProfileName, activeSaveName, isRel
                         </div>
                         <div className="flex items-center gap-2">
                             <SegmentedControl
-                                items={[
-                                    { id: "all", label: "All" },
-                                    { id: "base", label: "Base" },
-                                    { id: "other", label: "Accessory" },
-                                    { id: "wheels", label: "Wheels" },
-                                    { id: "paint", label: "Paint" },
-                                    { id: "cargo", label: "Cargo" },
-                                    { id: "driver_plate", label: "Driver Plate" },                                    
-                                ]}
+                                items={accessorySegmentItems}
                                 value={accessorySegment}
                                 onChange={(id) => setAccessorySegment(id as AccessorySegment)}
                                 size="sm"
@@ -615,6 +668,7 @@ export function SaveEditAction({ truck, activeProfileName, activeSaveName, isRel
                                                                         key={accessory.localId}
                                                                         className={`${accessory.status === "deleted" ? "opacity-50" : ""} ${selectedIds.has(accessory.localId) ? "bg-emerald-500/10" : ""}`}
                                                                         onContextMenu={(e) => handleContextMenu(e, accessory)}
+                                                                        onDoubleClick={() => openBlockEditor(accessory)}
                                                                     >
                                                                         <TableCell className="pl-6 pr-2">
                                                                             <input
@@ -719,6 +773,17 @@ export function SaveEditAction({ truck, activeProfileName, activeSaveName, isRel
                     onDraftBlockChange={setDraftBlock}
                     onApply={applyBlockEdit}
                     onClose={() => setEditingAccessoryId(null)}
+                />
+            )}
+
+            {isEditingLicensePlate && (
+                <PopupCodeSEAction
+                    accessory={{ id: truck.id, block_type: "license_plate", data_path: truck.id }}
+                    draftBlock={draftBlock}
+                    applyLabel="Save License"
+                    onDraftBlockChange={setDraftBlock}
+                    onApply={applyLicensePlateEdit}
+                    onClose={() => setIsEditingLicensePlate(false)}
                 />
             )}
 
