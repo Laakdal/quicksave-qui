@@ -1,65 +1,8 @@
-import { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import {
-    RefreshCw,
-    Save as SaveIcon,
-    ChevronDown,
-    User,
-    Check,
-    Pencil
-} from "lucide-react";
+import { Pencil, Play, Truck } from "lucide-react";
 import { SaveEditAction } from "./SaveEditAction";
-import { SegmentedControl } from "../../components/ui/SegmentedControl";
-import { RichDropdown } from "../../components/ui/DropdownBase";
-
-/* ── Action Button ─────────────────────────────────────────────── */
-function ActionBtn({
-    icon: Icon,
-    label,
-    primary = false,
-    disabled = false,
-    tooltip,
-    onClick,
-}: {
-    icon: React.ElementType;
-    label?: string;
-    primary?: boolean;
-    disabled?: boolean;
-    tooltip?: string;
-    onClick?: () => void;
-}) {
-    return (
-        <button
-            disabled={disabled}
-            onClick={onClick}
-            title={tooltip}
-            className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 select-none
-        ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer hover:-translate-y-0.5 active:translate-y-0"}
-        ${primary ? "bg-accent text-black hover:bg-accent-hover" : ""}`}
-            style={
-                primary
-                    ? {}
-                    : {
-                        backgroundColor: "rgba(var(--zinc-700), 0.5)",
-                        color: "var(--text-primary)",
-                    }
-            }
-        >
-            <Icon size={14} strokeWidth={2} />
-            {label}
-        </button>
-    );
-}
-
-function VSep() {
-    return (
-        <div
-            className="w-px h-7 mx-1 shrink-0"
-            style={{ backgroundColor: "var(--border-subtle)" }}
-        />
-    );
-}
+import { SaveManagerToolbar } from "../../components/ui/Toolbar";
 
 type TruckAccessory = {
     id: string;
@@ -123,19 +66,6 @@ export function SaveManagerView() {
     const [trucks, setTrucks] = useState<TruckRow[]>([]);
 
     const [isReloading, setIsReloading] = useState(false);
-
-    const [isSavesDropdownOpen, setIsSavesDropdownOpen] = useState(false);
-    const saveDropdownRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        function handleOutside(e: MouseEvent) {
-            if (saveDropdownRef.current && !saveDropdownRef.current.contains(e.target as Node)) {
-                setIsSavesDropdownOpen(false);
-            }
-        }
-        document.addEventListener("mousedown", handleOutside);
-        return () => document.removeEventListener("mousedown", handleOutside);
-    }, []);
 
     useEffect(() => {
         refreshProfiles();
@@ -298,106 +228,22 @@ export function SaveManagerView() {
         <div className="w-full h-full overflow-y-auto p-9">
             <div className="max-w-[1070px] mx-auto">
 
-                {/* ── Toolbar ────────────────────────────────────────── */}
-                <div
-                    className="flex flex-wrap items-center rounded-xl p-3 mb-6"
-                    style={{
-                        backgroundColor: "rgb(var(--panel-dark))",
-                        border: "1px solid var(--border-subtle)",
+                <SaveManagerToolbar
+                    profiles={profiles}
+                    activeProfileId={activeProfileId}
+                    onProfileChange={(profileId) => {
+                        setActiveProfileId(profileId);
+                        localStorage.setItem("active_save_profile", profileId);
                     }}
-                >
-                    {/* Left side: Profile */}
-                    <div className="flex items-center gap-2">
-                        <RichDropdown
-                            value={activeProfileId}
-                            options={profiles.map((profile) => ({
-                                id: profile.id,
-                                label: profile.name,
-                                description: profile.id,
-                            }))}
-                            onChange={(profileId) => {
-                                setActiveProfileId(profileId);
-                                localStorage.setItem("active_save_profile", profileId);
-                            }}
-                            placeholder="Active Profile..."
-                            icon={<User size={14} className="shrink-0 text-accent" />}
-                        />
-                    </div>
-
-                    <VSep />
-
-                    {/* Middle: Mode Switcher */}
-                    <div className="flex-1 flex justify-center items-center gap-4">
-                        <SegmentedControl
-                            items={tabs}
-                            value={activeSubTab}
-                            onChange={setActiveSubTab}
-                            size="sm"
-                        />
-                    </div>
-
-                    <VSep />
-
-                    {/* Right side: Save Slot & Refresh */}
-                    <div className="flex items-center gap-2">
-
-                        {/* Save Slot Selector */}
-                        <div ref={saveDropdownRef} className="relative">
-                            <button
-                                onClick={() => setIsSavesDropdownOpen(!isSavesDropdownOpen)}
-                                className="flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-lg text-sm bg-black/20 border outline-none focus:border-accent transition-all cursor-pointer hover:bg-black/30 max-w-[200px]"
-                                style={{
-                                    color: 'var(--text-primary)',
-                                    borderColor: 'var(--border-subtle)',
-                                }}
-                            >
-                                <SaveIcon size={14} className="opacity-50 shrink-0" />
-                                <span className="truncate">
-                                    {saves.find(s => s.id === activeSaveId)?.name || "Select Save..."}
-                                </span>
-                                <ChevronDown size={14} className="shrink-0 opacity-30" />
-                            </button>
-
-                            <AnimatePresence>
-                                {isSavesDropdownOpen && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 5 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: 5 }}
-                                        transition={{ duration: 0.15 }}
-                                        className="absolute right-0 top-full mt-2 w-[200px] z-[100] rounded-xl border p-1 shadow-2xl"
-                                        style={{ backgroundColor: 'var(--bg-main)', borderColor: 'var(--border-subtle)' }}
-                                    >
-                                        <div className="max-h-[300px] overflow-auto custom-scrollbar p-0.5">
-                                            {saves.map(s => (
-                                                <button
-                                                    key={s.id}
-                                                    onClick={() => {
-                                                        setActiveSaveId(s.id);
-                                                        setIsSavesDropdownOpen(false);
-                                                    }}
-                                                    className="w-full flex items-center justify-between px-3 py-2 text-xs rounded-lg hover:bg-zinc-500/10 transition-colors"
-                                                    style={{ color: 'var(--text-primary)' }}
-                                                >
-                                                    <span className="truncate font-medium">{s.name}</span>
-                                                    {activeSaveId === s.id && <Check size={14} className="text-accent" />}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
-
-                        <div className="w-px h-6 mx-1" style={{ backgroundColor: "var(--border-subtle)" }} />
-                        <ActionBtn
-                            icon={RefreshCw}
-                            tooltip="Reload profiles and saves"
-                            onClick={refreshProfiles}
-                            disabled={isReloading}
-                        />
-                    </div>
-                </div>
+                    saves={saves}
+                    activeSaveId={activeSaveId}
+                    onSaveChange={setActiveSaveId}
+                    tabs={tabs}
+                    activeSubTab={activeSubTab}
+                    onSubTabChange={setActiveSubTab}
+                    isReloading={isReloading}
+                    onRefresh={refreshProfiles}
+                />
 
                 {activeSubTab === "truck" && (
                     <div
@@ -453,18 +299,18 @@ export function SaveManagerView() {
                                                 <button
                                                     disabled={truck.active || !activeSaveGamePath}
                                                     onClick={() => handleActivateTruck(truck.id)}
-                                                    className={`inline-flex h-8 items-center justify-center rounded-lg border px-3 text-xs font-semibold transition-all ${truck.active ? "cursor-not-allowed opacity-45" : "hover:-translate-y-0.5 hover:bg-zinc-500/10"}`}
+                                                    className={`inline-flex h-8 w-8 items-center justify-center rounded-lg  transition-all ${truck.active ? "cursor-not-allowed opacity-45" : "hover:bg-zinc-500/10"}`}
                                                     style={{
                                                         color: truck.active ? "var(--text-secondary)" : "var(--accent)",
                                                         borderColor: "var(--border-subtle)",
                                                     }}
                                                     title={truck.active ? "Current active truck" : "Activate truck"}
                                                 >
-                                                    {truck.active ? "Active" : "Activate"}
+                                                    {truck.active ? <Truck size={15} strokeWidth={2} /> : <Play size={15} strokeWidth={2} />}
                                                 </button>
                                                 <button
                                                     onClick={() => setEditingTruck(truck)}
-                                                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border transition-all hover:-translate-y-0.5 hover:bg-zinc-500/10"
+                                                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition-all  hover:bg-zinc-500/10"
                                                     style={{
                                                         color: "var(--accent)",
                                                         borderColor: "var(--border-subtle)",
