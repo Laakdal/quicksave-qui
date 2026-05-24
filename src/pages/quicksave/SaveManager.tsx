@@ -21,24 +21,43 @@ type TruckDetail = {
     brand_id: string;
     display_name: string;
     license_plate: string;
+    license_plate_line: string;
+    fuel_percent: number | null;
+    damage_percent: number | null;
     accessories: TruckAccessory[];
     accessories_count: number;
     garage: string;
 };
 
-type PlayerVehicles = {
+type PlayerTrucks = {
     trucks: TruckDetail[];
     my_truck: string | null;
     assigned_truck: string | null;
-    trailers: string[];
-    assigned_trailer: string | null;
 };
 
-type SaveTruckAccessoryChange = {
-    id: string | null;
+type TrailerAccessory = {
+    id: string;
     block_type: string;
+    data_path: string;
     lines: string[];
-    status: "added" | "edited" | "deleted" | "unchanged";
+};
+
+type TrailerDetail = {
+    id: string;
+    display_name: string;
+    license_plate: string;
+    license_plate_line: string;
+    damage_percent: number | null;
+    accessories: TrailerAccessory[];
+    accessories_count: number;
+    slave_trailer: string | null;
+    garage: string;
+};
+
+type PlayerTrailers = {
+    trailers: TrailerDetail[];
+    my_trailer: string | null;
+    assigned_trailer: string | null;
 };
 
 type TruckRow = {
@@ -47,9 +66,32 @@ type TruckRow = {
     name: string;
     brand: string;
     licensePlate: string;
+    licensePlateLine: string;
+    fuelPercent: number | null;
+    damagePercent: number | null;
     accessories: TruckAccessory[];
     accessoriesCount: number;
     garage: string;
+};
+
+type TrailerRow = {
+    id: string;
+    active: boolean;
+    name: string;
+    licensePlate: string;
+    licensePlateLine: string;
+    slaveTrailer: string | null;
+    damagePercent: number | null;
+    accessories: TruckAccessory[];
+    accessoriesCount: number;
+    garage: string;
+};
+
+type SaveTruckAccessoryChange = {
+    id: string | null;
+    block_type: string;
+    lines: string[];
+    status: "added" | "edited" | "deleted" | "unchanged";
 };
 
 export function SaveManagerView() {
@@ -66,6 +108,7 @@ export function SaveManagerView() {
     const [saves, setSaves] = useState<{ id: string, name: string, path: string }[]>([]);
     const [activeSaveId, setActiveSaveId] = useState<string>("");
     const [trucks, setTrucks] = useState<TruckRow[]>([]);
+    const [trailers, setTrailers] = useState<TrailerRow[]>([]);
 
     const [isReloading, setIsReloading] = useState(false);
 
@@ -84,6 +127,7 @@ export function SaveManagerView() {
             loadVehicles();
         } else {
             setTrucks([]);
+            setTrailers([]);
         }
     }, [activeSaveId, saves]);
 
@@ -146,23 +190,51 @@ export function SaveManagerView() {
         if (!save) return [];
 
         try {
-            const vehicles = await invoke<PlayerVehicles>("get_player_vehicles", { path: `${save.path}/game.sii` });
+            const gamePath = `${save.path}/game.sii`;
+            const [vehicles, playerTrailers] = await Promise.all([
+                invoke<PlayerTrucks>("get_player_vehicles", { path: gamePath }),
+                invoke<PlayerTrailers>("get_player_trailers", { path: gamePath }),
+            ]);
             const loadedTrucks = vehicles.trucks.map((truck) => ({
                 id: truck.id,
                 active: truck.id === (vehicles.assigned_truck || vehicles.my_truck),
                 name: truck.display_name,
                 brand: truck.brand_id,
                 licensePlate: truck.license_plate || "-",
+                licensePlateLine: truck.license_plate_line,
+                fuelPercent: truck.fuel_percent,
+                damagePercent: truck.damage_percent,
                 accessories: truck.accessories,
                 accessoriesCount: truck.accessories_count,
                 garage: truck.garage
             }));
+            const loadedTrailers = playerTrailers.trailers.map((trailer) => ({
+                id: trailer.id,
+                active: trailer.id === (playerTrailers.assigned_trailer || playerTrailers.my_trailer),
+                name: trailer.display_name,
+                brand: "Trailer",
+                licensePlate: trailer.license_plate || "-",
+                licensePlateLine: trailer.license_plate_line,
+                fuelPercent: null,
+                slaveTrailer: trailer.slave_trailer,
+                damagePercent: trailer.damage_percent,
+                accessories: trailer.accessories.map((accessory) => ({
+                    ...accessory,
+                    wheel_offset: null,
+                    wheel_position: null,
+                    paint_colors: {},
+                })),
+                accessoriesCount: trailer.accessories_count,
+                garage: trailer.garage,
+            }));
 
             setTrucks(loadedTrucks);
-            return loadedTrucks;
+            setTrailers(loadedTrailers);
+            return [...loadedTrucks, ...loadedTrailers];
         } catch (err) {
             console.error("Failed to load vehicles:", err);
             setTrucks([]);
+            setTrailers([]);
             return [];
         }
     };
@@ -178,6 +250,20 @@ export function SaveManagerView() {
             })));
         } catch (err) {
             console.error("Failed to save active truck:", err);
+        }
+    };
+
+    const handleActivateTrailer = async (trailerId: string) => {
+        if (!activeSaveGamePath) return;
+
+        try {
+            await invoke("save_active_trailer", { path: activeSaveGamePath, trailerId });
+            setTrailers((currentTrailers) => currentTrailers.map((trailer) => ({
+                ...trailer,
+                active: trailer.id === trailerId,
+            })));
+        } catch (err) {
+            console.error("Failed to save active trailer:", err);
         }
     };
 
@@ -213,11 +299,41 @@ export function SaveManagerView() {
                                 })),
                             },
                         });
-                        const loadedTrucks = await loadVehicles();
-                        const updatedTruck = loadedTrucks.find((truck) => truck.id === editingTruck.id);
-                        if (updatedTruck) {
-                            setEditingTruck(updatedTruck);
+                        const loadedVehicles = await loadVehicles();
+                        const updatedVehicle = loadedVehicles.find((vehicle) => vehicle.id === editingTruck.id);
+                        if (updatedVehicle) {
+                            setEditingTruck(updatedVehicle);
                         }
+                    }
+                }}
+                onSaveLicensePlate={async (licensePlateLine: string) => {
+                    if (!activeSaveGamePath) return;
+
+                    await invoke("save_vehicle_license_plate", { path: activeSaveGamePath, vehicleId: editingTruck.id, licensePlateLine });
+                    const loadedVehicles = await loadVehicles();
+                    const updatedVehicle = loadedVehicles.find((vehicle) => vehicle.id === editingTruck.id);
+                    if (updatedVehicle) {
+                        setEditingTruck(updatedVehicle);
+                    }
+                }}
+                onRefuel={editingTruck.brand === "Trailer" ? undefined : async () => {
+                    if (!activeSaveGamePath) return;
+
+                    await invoke("refueling_truck", { path: activeSaveGamePath, truckId: editingTruck.id });
+                    const loadedTrucks = await loadVehicles();
+                    const updatedTruck = loadedTrucks.find((truck) => truck.id === editingTruck.id);
+                    if (updatedTruck) {
+                        setEditingTruck(updatedTruck);
+                    }
+                }}
+                onRepair={async () => {
+                    if (!activeSaveGamePath) return;
+
+                    await invoke("repair_owned_vehicle", { path: activeSaveGamePath, vehicleId: editingTruck.id });
+                    const loadedTrucks = await loadVehicles();
+                    const updatedTruck = loadedTrucks.find((truck) => truck.id === editingTruck.id);
+                    if (updatedTruck) {
+                        setEditingTruck(updatedTruck);
                     }
                 }}
                 onRefresh={refreshProfiles}
@@ -311,9 +427,82 @@ export function SaveManagerView() {
                 )}
 
                 {activeSubTab === "trailer" && (
-                    <div className="py-10 text-center" style={{ color: "var(--text-secondary)" }}>
-                        Trailer management is not implemented yet.
-                    </div>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-16 px-6 text-center" style={{ color: "var(--text-secondary)" }}>
+                                    Active
+                                </TableHead>
+                                <TableHead>Trailer</TableHead>
+                                <TableHead>License Plate</TableHead>
+                                <TableHead>Slave Trailer</TableHead>
+                                <TableHead>Garage</TableHead>
+                                <TableHead className="w-24 text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {trailers.length > 0 ? trailers.map((trailer) => (
+                                <TableRow key={trailer.id}>
+                                    <TableCell className="px-6">
+                                        <div className="flex justify-center">
+                                            <span
+                                                className={`block h-3 w-3 rounded-full ${trailer.active ? "bg-emerald-400" : "bg-zinc-600"}`}
+                                            />
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="font-semibold" style={{ color: "var(--text-primary)" }}>
+                                        {trailer.name}
+                                    </TableCell>
+                                    <TableCell className="font-medium" style={{ color: "var(--text-primary)" }}>
+                                        {trailer.licensePlate}
+                                    </TableCell>
+                                    <TableCell className="font-medium" style={{ color: "var(--text-primary)" }}>
+                                        {trailer.slaveTrailer ? "Yes" : "-"}
+                                    </TableCell>
+                                    <TableCell className="font-medium" style={{ color: "var(--text-primary)" }}>
+                                        {trailer.garage.replace("garage.", "").replace(/^\w/, (c) => c.toUpperCase())}
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center justify-end gap-2">
+                                            <ToolbarButton
+                                                icon={trailer.active ? Truck : Play}
+                                                size="table"
+                                                tone={trailer.active ? "success" : "accent"}
+                                                disabled={trailer.active || !activeSaveGamePath}
+                                                onClick={() => handleActivateTrailer(trailer.id)}
+                                                tooltip={trailer.active ? "Current active trailer" : "Activate trailer"}
+                                            />
+                                            <ToolbarButton
+                                                icon={Pencil}
+                                                size="table"
+                                                tone="accent"
+                                                onClick={() => setEditingTruck({
+                                                    id: trailer.id,
+                                                    active: trailer.active,
+                                                    name: trailer.name,
+                                                    brand: "Trailer",
+                                                    licensePlate: trailer.licensePlate,
+                                                    licensePlateLine: trailer.licensePlateLine,
+                                                    fuelPercent: null,
+                                                    damagePercent: trailer.damagePercent,
+                                                    accessories: trailer.accessories,
+                                                    accessoriesCount: trailer.accessoriesCount,
+                                                    garage: trailer.garage,
+                                                })}
+                                                tooltip="Edit trailer"
+                                            />
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            )) : (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="px-6 py-10 text-center" style={{ color: "var(--text-secondary)" }}>
+                                        No trailers found for the selected save.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
                 )}
 
             </div>
