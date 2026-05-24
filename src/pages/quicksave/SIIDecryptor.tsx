@@ -282,34 +282,46 @@ export function DecryptorView() {
           </div>
         )}
 
-        <div className="flex items-center justify-between bg-zinc-800/60 px-4 py-3 rounded-lg border border-zinc-700/50">
-          <div className="flex items-center gap-3 text-zinc-200 min-w-0 flex-1 pr-4">
-            <FileJson size={18} className="text-accent shrink-0" />
-            <span className="font-medium text-sm truncate">{fileName}</span>
+        <div
+          className="flex flex-wrap items-center rounded-xl p-3"
+          style={{ backgroundColor: "rgb(var(--panel-dark))", border: "1px solid var(--border-subtle)" }}
+        >
+          <div
+            className="flex max-w-[420px] min-w-0 items-center gap-2 rounded-lg border bg-black/20 px-3 py-1.5 text-sm"
+            style={{ color: "var(--text-primary)", borderColor: "var(--border-subtle)" }}
+          >
+            <FileJson size={14} className="shrink-0 text-accent" />
+            <span className="truncate font-semibold">{fileName}</span>
           </div>
-          <div className="flex gap-2 items-center shrink-0">
+
+          <div className="flex-1" />
+
+          <div className="flex items-center gap-2">
             <button
               onClick={() => { setDecryptedText(""); }}
-              className="px-3 py-1.5 text-xs rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 transition-colors"
+              className="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-semibold transition-colors duration-200 hover:bg-zinc-500/10"
+              style={{ color: "var(--text-primary)" }}
             >
               Close
             </button>
             <button
               onClick={saveAs}
-              className="flex items-center gap-1.5 px-3 py-1.5 border border-zinc-700 hover:bg-zinc-700 text-zinc-200 rounded-md text-xs font-semibold transition-colors"
+              className="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-semibold transition-colors duration-200 hover:bg-zinc-500/10"
+              style={{ color: "var(--text-primary)" }}
             >
-              <Download size={14} /> Save As...
+              <Download size={14} strokeWidth={2} /> Save As...
             </button>
             <button
               onClick={handleSaveToOriginalClick}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-accent text-black hover:bg-accent-hover rounded-md text-xs font-bold transition-colors"
+              className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-red-400"
+              style={{ backgroundColor: "#e05252" }}
             >
-              <Save size={14} /> Save Decrypted
+              <Save size={14} strokeWidth={2} /> Save Decrypted
             </button>
           </div>
         </div>
 
-        <CodeViewer value={decryptedText} onChange={setDecryptedText} />
+        <CodeViewer value={decryptedText} onChange={setDecryptedText} height="100%" className="h-full" minimap />
       </div>
     );
   }
