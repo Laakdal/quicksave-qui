@@ -3,6 +3,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { Pencil, Play, Truck } from "lucide-react";
 import { SaveEditAction } from "./SaveEditAction";
 import { SaveManagerToolbar } from "../../components/ui/Toolbar";
+import { ToolbarButton } from "../../components/ui/ButtonBase";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../../components/ui/Table";
 
 type TruckAccessory = {
     id: string;
@@ -246,91 +248,71 @@ export function SaveManagerView() {
                 />
 
                 {activeSubTab === "truck" && (
-                    <div
-                        className="overflow-hidden rounded-xl"
-                        style={{
-                            backgroundColor: "rgb(var(--panel-dark))",
-                            border: "1px solid var(--border-subtle)",
-                        }}
-                    >
-                        <table className="w-full border-collapse text-left text-sm">
-                            <thead>
-                                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                                    <th className="w-16 px-6 py-3 font-semibold" style={{ color: "var(--text-secondary)" }}>
-                                        Active
-                                    </th>
-                                    <th className="px-4 py-3 font-semibold" style={{ color: "var(--text-primary)" }}>
-                                        Truck
-                                    </th>
-                                    <th className="px-4 py-3 font-semibold" style={{ color: "var(--text-primary)" }}>
-                                        License Plate
-                                    </th>
-                                    <th className="px-4 py-3 font-semibold" style={{ color: "var(--text-primary)" }}>
-                                        Garage
-                                    </th>
-                                    <th className="w-24 px-4 py-3 text-right font-semibold" style={{ color: "var(--text-primary)" }}>
-                                        Actions
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {trucks.length > 0 ? trucks.map((truck) => (
-                                    <tr
-                                        key={truck.id}
-                                        className="transition-colors hover:bg-zinc-500/5"
-                                        style={{ borderBottom: "1px solid var(--border-subtle)" }}
-                                    >
-                                        <td className="px-6 py-4">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-16 px-6 text-center" style={{ color: "var(--text-secondary)" }}>
+                                    Active
+                                </TableHead>
+                                <TableHead>Truck</TableHead>
+                                <TableHead>License Plate</TableHead>
+                                <TableHead>Garage</TableHead>
+                                <TableHead className="w-24 text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {trucks.length > 0 ? trucks.map((truck) => (
+                                <TableRow key={truck.id}>
+                                    <TableCell className="px-6">
+                                        <div className="flex justify-center">
                                             <span
                                                 className={`block h-3 w-3 rounded-full ${truck.active ? "bg-emerald-400" : "bg-zinc-600"}`}
                                             />
-                                        </td>
-                                        <td className="px-4 py-4 font-semibold" style={{ color: "var(--text-primary)" }}>
-                                            {truck.name}
-                                        </td>
-                                        <td className="px-4 py-4 font-medium" style={{ color: "var(--text-primary)" }}>
-                                            {truck.licensePlate}
-                                        </td>
-                                        <td className="px-4 py-4 font-medium" style={{ color: "var(--text-primary)" }}>
-                                            {truck.garage.replace("garage.", "").replace(/^\w/, (c) => c.toUpperCase())}
-                                        </td>
-                                        <td className="px-4 py-4">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <button
-                                                    disabled={truck.active || !activeSaveGamePath}
-                                                    onClick={() => handleActivateTruck(truck.id)}
-                                                    className={`inline-flex h-8 w-8 items-center justify-center rounded-lg  transition-all ${truck.active ? "text-emerald-400" : "hover:bg-zinc-500/10"}`}
-                                                    style={{
-                                                        color: truck.active ? undefined : "var(--accent)",
-                                                        borderColor: "var(--border-subtle)",
-                                                    }}
-                                                    title={truck.active ? "Current active truck" : "Activate truck"}
-                                                >
-                                                    {truck.active ? <Truck size={15} strokeWidth={2} /> : <Play size={15} strokeWidth={2} />}
-                                                </button>
-                                                <button
-                                                    onClick={() => setEditingTruck(truck)}
-                                                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition-all  hover:bg-zinc-500/10"
-                                                    style={{
-                                                        color: "var(--accent)",
-                                                        borderColor: "var(--border-subtle)",
-                                                    }}
-                                                    title="Edit truck"
-                                                >
-                                                    <Pencil size={15} strokeWidth={2} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )) : (
-                                    <tr>
-                                        <td colSpan={5} className="px-6 py-10 text-center" style={{ color: "var(--text-secondary)" }}>
-                                            No trucks found for the selected save.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="font-semibold" style={{ color: "var(--text-primary)" }}>
+                                        {truck.name}
+                                    </TableCell>
+                                    <TableCell className="font-medium" style={{ color: "var(--text-primary)" }}>
+                                        {truck.licensePlate}
+                                    </TableCell>
+                                    <TableCell className="font-medium" style={{ color: "var(--text-primary)" }}>
+                                        {truck.garage.replace("garage.", "").replace(/^\w/, (c) => c.toUpperCase())}
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center justify-end gap-2">
+                                            <ToolbarButton
+                                                icon={truck.active ? Truck : Play}
+                                                size="table"
+                                                tone={truck.active ? "success" : "accent"}
+                                                disabled={truck.active || !activeSaveGamePath}
+                                                onClick={() => handleActivateTruck(truck.id)}
+                                                tooltip={truck.active ? "Current active truck" : "Activate truck"}
+                                            />
+                                            <ToolbarButton
+                                                icon={Pencil}
+                                                size="table"
+                                                tone="accent"
+                                                onClick={() => setEditingTruck(truck)}
+                                                tooltip="Edit truck"
+                                            />
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            )) : (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="px-6 py-10 text-center" style={{ color: "var(--text-secondary)" }}>
+                                        No trucks found for the selected save.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                )}
+
+                {activeSubTab === "trailer" && (
+                    <div className="py-10 text-center" style={{ color: "var(--text-secondary)" }}>
+                        Trailer management is not implemented yet.
                     </div>
                 )}
 
