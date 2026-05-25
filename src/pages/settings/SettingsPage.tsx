@@ -14,6 +14,8 @@ interface SettingsViewProps {
   onTabViewed?: () => void;
 }
 
+const normalizeWindowsPath = (path: string) => path.replace(/\//g, "\\");
+
 function SettingRow({ icon: Icon, title, desc, layout = "row", children }: { icon: React.ElementType; title: string; desc: string; layout?: "row" | "column"; children: React.ReactNode }) {
   if (layout === "column") {
     return (
@@ -51,8 +53,8 @@ function SettingRow({ icon: Icon, title, desc, layout = "row", children }: { ico
 export function SettingsView({ currentTheme, onThemeChange, translucentEffect, onTranslucentEffectChange, onTabViewed }: SettingsViewProps) {
   const [appTheme, setAppTheme] = useState(currentTheme);
   const [language, setLanguage] = useState("English");
-  const [ets2Path, setEts2Path] = useState(() => localStorage.getItem("ets2_profiles_path") || "");
-  const [atsPath, setAtsPath] = useState(() => localStorage.getItem("ats_profiles_path") || "");
+  const [ets2Path, setEts2Path] = useState(() => normalizeWindowsPath(localStorage.getItem("ets2_profiles_path") || ""));
+  const [atsPath, setAtsPath] = useState(() => normalizeWindowsPath(localStorage.getItem("ats_profiles_path") || ""));
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [disableMinSize, setDisableMinSize] = useState(() => localStorage.getItem("disable_min_window_size") === "true");
   const [showSaveConfirm, setShowSaveConfirm] = useState(() => localStorage.getItem("show_save_confirmation") !== "false");
@@ -75,8 +77,9 @@ export function SettingsView({ currentTheme, onThemeChange, translucentEffect, o
     if (!ets2Path) {
       invoke<string | null>("auto_detect_profiles").then(detected => {
         if (detected) {
-          setEts2Path(detected);
-          localStorage.setItem("ets2_profiles_path", detected);
+          const normalizedPath = normalizeWindowsPath(detected);
+          setEts2Path(normalizedPath);
+          localStorage.setItem("ets2_profiles_path", normalizedPath);
         }
       }).catch(err => console.error(err));
     }
@@ -98,8 +101,9 @@ export function SettingsView({ currentTheme, onThemeChange, translucentEffect, o
     try {
       const selected = await invoke<string | null>("pick_folder");
       if (selected) {
-        setEts2Path(selected);
-        localStorage.setItem("ets2_profiles_path", selected);
+        const normalizedPath = normalizeWindowsPath(selected);
+        setEts2Path(normalizedPath);
+        localStorage.setItem("ets2_profiles_path", normalizedPath);
         setSaveSuccess(true);
       }
     } catch (err) {
@@ -111,8 +115,9 @@ export function SettingsView({ currentTheme, onThemeChange, translucentEffect, o
     try {
       const selected = await invoke<string | null>("pick_folder");
       if (selected) {
-        setAtsPath(selected);
-        localStorage.setItem("ats_profiles_path", selected);
+        const normalizedPath = normalizeWindowsPath(selected);
+        setAtsPath(normalizedPath);
+        localStorage.setItem("ats_profiles_path", normalizedPath);
         setSaveSuccess(true);
       }
     } catch (err) {
@@ -177,9 +182,11 @@ export function SettingsView({ currentTheme, onThemeChange, translucentEffect, o
                 type="text"
                 value={ets2Path}
                 placeholder="Not set"
-                onChange={(e) => setEts2Path(e.target.value)}
+                onChange={(e) => setEts2Path(normalizeWindowsPath(e.target.value))}
                 onBlur={() => {
-                  localStorage.setItem("ets2_profiles_path", ets2Path);
+                  const normalizedPath = normalizeWindowsPath(ets2Path);
+                  setEts2Path(normalizedPath);
+                  localStorage.setItem("ets2_profiles_path", normalizedPath);
                   setSaveSuccess(true);
                 }}
                 className="w-full px-3 py-2 pr-10 rounded-lg text-sm bg-black/20 border outline-none transition-all focus:border-accent/50"
@@ -201,9 +208,11 @@ export function SettingsView({ currentTheme, onThemeChange, translucentEffect, o
                 type="text"
                 value={atsPath}
                 placeholder="Not set"
-                onChange={(e) => setAtsPath(e.target.value)}
+                onChange={(e) => setAtsPath(normalizeWindowsPath(e.target.value))}
                 onBlur={() => {
-                  localStorage.setItem("ats_profiles_path", atsPath);
+                  const normalizedPath = normalizeWindowsPath(atsPath);
+                  setAtsPath(normalizedPath);
+                  localStorage.setItem("ats_profiles_path", normalizedPath);
                   setSaveSuccess(true);
                 }}
                 className="w-full px-3 py-2 pr-10 rounded-lg text-sm bg-black/20 border outline-none transition-all focus:border-accent/50"
