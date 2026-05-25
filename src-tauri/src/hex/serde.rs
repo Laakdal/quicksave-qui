@@ -1,4 +1,9 @@
-#![warn(missing_docs)]
+//! Hex serialization and deserialization support for serde.
+//!
+//! This module provides helper functions and submodules to simplify hex encoding/decoding
+//! of byte sequences during serialization and deserialization with `serde`.
+
+// #![warn(missing_docs)]
 
 use core::iter::FromIterator;
 
