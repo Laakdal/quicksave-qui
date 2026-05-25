@@ -564,7 +564,7 @@ export function SaveEditAction({ truck, activeProfileName, activeSaveName, isRel
                                         icon={Fuel}
                                         variant="primary"
                                         size="table"
-                                        disabled={!canSave || truck.fuelPercent >= 100 || !onRefuel}
+                                        disabled={!canSave || !onRefuel}
                                         onClick={onRefuel}
                                         tooltip="Refuel to 100%"
                                     />
@@ -576,7 +576,7 @@ export function SaveEditAction({ truck, activeProfileName, activeSaveName, isRel
                                     icon={Wrench}
                                     variant="primary"
                                     size="table"
-                                    disabled={!canSave || (truck.damagePercent ?? 0) === 0 || !onRepair}
+                                    disabled={!canSave || !onRepair}
                                     onClick={onRepair}
                                     tooltip="Repair vehicle"
                                 />
@@ -667,6 +667,7 @@ export function SaveEditAction({ truck, activeProfileName, activeSaveName, isRel
                                                                     <TableRow
                                                                         key={accessory.localId}
                                                                         className={`${accessory.status === "deleted" ? "opacity-50" : ""} ${selectedIds.has(accessory.localId) ? "bg-emerald-500/10" : ""}`}
+                                                                        data-context-menu="true"
                                                                         onContextMenu={(e) => handleContextMenu(e, accessory)}
                                                                         onDoubleClick={() => openBlockEditor(accessory)}
                                                                     >
