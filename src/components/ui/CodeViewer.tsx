@@ -1,4 +1,14 @@
-import Editor from "@monaco-editor/react";
+import Editor, { loader } from "@monaco-editor/react";
+import * as monaco from "monaco-editor";
+import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
+
+self.MonacoEnvironment = {
+    getWorker() {
+        return new editorWorker();
+    },
+};
+
+loader.config({ monaco });
 
 type CodeViewerProps = {
     value: string;
@@ -26,6 +36,7 @@ export function CodeViewer({ value, onChange, language = "ini", height = "100%",
                     wordWrap: "off",
                     padding: { top: 16 },
                     hover: { enabled: false },
+                    automaticLayout: true,
                 }}
                 loading={<div className="flex justify-center pt-10 text-zinc-500">Loading editor...</div>}
             />
