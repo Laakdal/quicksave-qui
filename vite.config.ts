@@ -28,4 +28,13 @@ export default defineConfig(async () => ({
       ignored: ["**/src-tauri/**"],
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("monaco-editor") || id.includes("@monaco-editor/react")) return "monaco";
+        },
+      },
+    },
+  },
 }));
